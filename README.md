@@ -75,6 +75,9 @@ cd interactive_summary_extraction
 
 # Run setup script (installs uv, dependencies, vLLM)
 bash pipeline/setup_runpod.sh
+
+# Activate uv in current shell
+source ~/.bashrc
 ```
 
 ---
