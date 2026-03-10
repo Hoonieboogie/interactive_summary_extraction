@@ -2,41 +2,59 @@
 
 ## Context
 
-- **300,000** interactive HTML educational contents
+- **Over 300,000** interactive HTML educational contents
 - Engine types: uncategorized, poorly documented
 - Known engines so far: Aspen Editor (i-Scream), iSpring (PPT export), unknown custom HTML5
 - Building per-engine parsers for all content types is too slow as a first step
 
 ## Approach: LLM-First Baseline
 
-Skip engine detection and engine-specific parsing. Instead:
+Skip engine detection and engine-specific parsing.
+Pass raw content directly to a local LLM — no per-token cost.
 
 ```
 ANY content folder
        │
        ▼
 ┌─────────────────────────────────────────────────┐
-│  STAGE 1: UNIVERSAL TEXT EXTRACTION              │
+│  STAGE 1: UNIVERSAL PRE-FILTER                   │
 │                                                  │
 │  Read all .js/.html files in the folder          │
-│  → Extract all text strings                      │
-│  → Keep strings containing Korean (한글)          │
-│  → Strip <script>, <style>, <svg> contents       │
-│  → Collapse whitespace, deduplicate              │
+│  Pass through raw, but strip provably            │
+│  non-educational data to fit context window:     │
+│                                                  │
+│  STRIP (never educational):                      │
+│    • <svg>...</svg> blocks (vector paths/coords) │
+│    • <style>...</style> blocks (CSS rules)       │
+│    • inline style="..." attributes               │
+│    • HTML comments <!-- ... -->                   │
+│    • SVG path data (d="M0,0 V15.685 H23...")     │
+│                                                  │
+│  KEEP (may contain educational value):           │
+│    • All text (Korean, English, any language)     │
+│    • Image refs (src="...", base64 data URIs)     │
+│    • Audio/video refs (mediaID, .mp3, .mp4)      │
+│    • File structure and paths                    │
+│                                                  │
+│  WHY KEEP MEDIA: Some educational content is     │
+│  embedded in images/audio. Keeping references    │
+│  enables future Vision LLM / audio processing.  │
 │                                                  │
 │  This is ENGINE-AGNOSTIC. No detection needed.   │
 └──────────────────────┬──────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────┐
-│  STAGE 2: LLM SYNTHESIS                          │
+│  STAGE 2: LLM SYNTHESIS (Local Model)            │
 │                                                  │
-│  Prompt-engineered LLM receives all text and:    │
-│  1. Ignores HTML tags, code, technical markup    │
+│  Local LLM (e.g. Qwen3 8B via vLLM) receives    │
+│  pre-filtered content and:                       │
+│  1. Ignores remaining HTML tags, code, markup    │
 │  2. Ignores UI noise (버튼, 다음, 확인, etc.)     │
 │  3. Focuses on educationally meaningful content  │
 │  4. Outputs 3-line Korean summary as JSON        │
 │                                                  │
+│  Token cost = $0 (local inference)               │
 │  No fine-tuning needed — prompt engineering only │
 └──────────────────────┬──────────────────────────┘
                        │
@@ -46,15 +64,22 @@ ANY content folder
 │                                                  │
 │  {                                               │
 │    id: "folder_name",                            │
-│    summary: [line1, line2, line3],               │
+│    summary: "line1. line2. line3",                │
 │    metadata: { extractedAt, charCount,           │
 │                pipeline: "v5.0" }                │
 │  }                                               │
 │                                                  │
-│  Flag if < 100 chars Korean text extracted        │
-│  (likely image-heavy, needs manual review)       │
+│  Flag if < 100 chars text after pre-filter       │
+│  (likely image-heavy, needs Vision LLM later)    │
 └─────────────────────────────────────────────────┘
 ```
+
+### Future Multi-Modal Expansion
+
+The pipeline preserves media references so it can evolve:
+- **Now**: Text-only summary via local LLM
+- **Future**: Image analysis via Vision LLM (educational diagrams, text in images)
+- **Future**: Audio transcription (narration, dialogue)
 
 ## Why This Over v4.0 (Per-Engine Parsing)
 
@@ -68,71 +93,74 @@ ANY content folder
 
 v4.0 remains valuable as an **optimization layer** — for high-volume engine types, a structural parser can reduce token cost and improve accuracy. But v5.0 is the **baseline that covers everything**.
 
-## Pre-Extraction: Why Not Send Raw Files
+## Why Pre-Filter Instead of Raw Pass-Through
 
-Raw `data.js` (Aspen) is ~700KB, mostly engine metadata (hex colors, pixel coords, class names, hash IDs). Sending everything wastes 50x tokens.
+With a local model, token cost is $0 — so why not pass raw files directly?
 
-| What you send              | Avg tokens/content | Cost at 300K (Gemini Flash Lite) |
-|----------------------------|--------------------|---------------------------------|
-| Raw file contents          | ~120,000           | ~$3,600                         |
-| Korean text only (filtered)| ~3,000             | ~$57                            |
+**Context window is the constraint.** Aspen `data.js` can be 1.6MB (~400K tokens), exceeding
+most local model context limits (Qwen3 8B = 128K tokens).
 
-The pre-filter ("keep only strings containing Korean characters") is universal across ALL engines and cuts cost dramatically.
+The pre-filter is NOT about cost savings — it's about **fitting content into the context window**
+by stripping data that is provably non-educational (SVG paths, CSS rules, inline styles).
+
+| What you send           | Avg tokens/content | Fits 128K context? |
+|-------------------------|--------------------|--------------------|
+| Raw file contents       | ~120,000           | Most yes, some no  |
+| After pre-filter        | ~30,000-50,000     | Yes                |
+
+The pre-filter is universal (SVG/CSS/style attributes exist in all web content)
+and preserves all text + media references.
 
 ## LLM Prompt Template
 
 ```
-당신은 교육 콘텐츠 분석 전문가입니다.
+너는 교육 콘텐츠 분석 전문가야.
 
-아래는 교육용 인터랙티브 콘텐츠에서 추출한 원본 텍스트입니다.
+아래는 교육용 인터랙티브 콘텐츠에서 추출한 원본 텍스트야.
 이 텍스트에는 HTML 태그, 코드, UI 요소(버튼, 메뉴, 네비게이션 텍스트) 등이
-포함되어 있을 수 있습니다.
+포함되어 있을 수 있어.
 
 [지시사항]
-1. HTML 태그, JavaScript, CSS 코드를 모두 무시하세요.
-2. 버튼 라벨, 네비게이션 텍스트, UI 요소 텍스트를 무시하세요.
-3. 교육적으로 의미 있는 내용만 파악하세요.
-4. 해당 콘텐츠의 핵심 교육 내용을 한국어 3줄로 요약하세요.
-5. 원본 텍스트에 없는 내용을 추가하지 마세요.
+1. HTML 태그, JavaScript, CSS 코드를 모두 무시해.
+2. 버튼 라벨, 네비게이션 텍스트, UI 요소 텍스트를 무시해.
+3. 교육적으로 의미 있는 내용만 파악해.
+4. 해당 콘텐츠의 핵심 교육 내용을 한국어 3줄로 요약해.
+5. 원본 텍스트에 없는 내용을 절대 추가하지 마.
 
 규칙:
 - 첫째 줄: 학습 주제 (무엇을 배우는가)
 - 둘째 줄: 주요 학습 활동 (어떤 활동을 하는가)
 - 셋째 줄: 학습 목표 및 기대 효과 (무엇을 할 수 있게 되는가)
 
-JSON 형식으로 응답하세요:
-{ "line1": "...", "line2": "...", "line3": "..." }
+[출력형식]
+JSON 형식으로 응답할 것:
+{ "summary": "line1. line2. line3" }
 
 [원본 텍스트]
-{content}
+{CONTENT}
 ```
 
-## Cost Analysis (300K Contents)
+## Infrastructure: Local Model
 
-Assumptions: ~3,000 input tokens avg, ~200 output tokens avg per content.
+Primary deployment target is **local inference** (no per-token cost).
 
-| Model                          | Total Cost | Batch Discount | Korean Quality |
-|--------------------------------|------------|----------------|----------------|
-| Gemini 2.5 Flash Lite (batch)  | $114       | **$57**        | Good           |
-| Qwen3 8B (API)                 | **$69**    | N/A            | Best           |
-| GPT-4o-mini (batch)            | $171       | ~$86           | Good           |
-| Gemini 2.5 Flash (batch)       | $420       | $210           | Good           |
-| Claude Haiku 3.5 (batch)       | $960       | $480           | Very Good      |
-| Qwen3 8B (local, A100)         | **$20-50** | N/A            | Best           |
+| Config                        | VRAM     | Throughput       | Time for 300K  |
+|-------------------------------|----------|------------------|----------------|
+| Qwen3 8B on A100 80GB (FP16) | ~16 GB   | ~3,000+ tok/s    | ~5-6 hours     |
+| Qwen3 8B on RTX 4090 (Q4)    | ~7 GB    | ~100-140 tok/s   | ~5-7 days      |
+| Qwen3 8B on RTX 3060 (Q4)    | ~7 GB    | ~7-10 tok/s      | Impractical    |
 
-## Infrastructure Options
+- **Recommended engine**: vLLM (2.7x throughput via continuous batching)
+- **Recommended model**: Qwen3 8B (best Korean quality among open-source models)
+- **Total cost**: GPU rental only ($20-50 on cloud A100)
 
-### API-Based (Recommended for first run)
+### API Fallback (for POC / validation phase)
 
-- **Gemini Batch API**: No predefined quota limits, 50% cost discount, hours to complete
-- **Claude Batch API**: 24hr SLA, 10K requests per batch, 50% discount
-- Implement: async workers + exponential backoff + retry
-
-### Local Model (For ongoing/repeated use)
-
-- **Qwen3 8B** on A100 80GB via vLLM: ~3,000 tok/s, finishes in ~5-6 hours
-- **Qwen3 8B** on RTX 4090 (Q4): ~100-140 tok/s, finishes in ~5-7 days
-- VRAM: ~7GB (Q4) or ~16GB (FP16)
+| Model                          | Total Cost (300K) | Korean Quality |
+|--------------------------------|-------------------|----------------|
+| Gemini 2.5 Flash Lite (batch)  | **$57**           | Good           |
+| Qwen3 8B (API)                 | **$69**           | Best           |
+| GPT-4o-mini (batch)            | ~$86              | Good           |
 
 ## Risks & Mitigations
 
