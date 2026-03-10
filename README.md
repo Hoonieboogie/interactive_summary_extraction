@@ -47,7 +47,7 @@ The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, s
 
 ```bash
 git clone https://HoonHan:<TOKEN>@git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
-tar czf repo.tar.gz interactive_summary_extraction
+COPYFILE_DISABLE=1 tar czf repo.tar.gz interactive_summary_extraction
 ```
 
 ---
@@ -72,7 +72,7 @@ ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519
 Then on Runpod:
 ```bash
 cd /workspace
-tar xzf repo.tar.gz
+tar xzf repo.tar.gz --no-same-owner
 cd interactive_summary_extraction
 
 # Run setup script (installs uv, dependencies, vLLM)
