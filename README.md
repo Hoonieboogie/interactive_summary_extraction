@@ -13,13 +13,28 @@ The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, s
 
 ---
 
+## Recommended Pod Spec
+
+| Setting | Value | Why |
+|---|---|---|
+| **GPU** | 1x H100 80GB | Enough for any single 32B model in sequential mode |
+| **Container Disk** | 50 GB | OS + virtualenv + code |
+| **Volume Disk** | 250 GB | Model weights persist between pods (EXAONE ~60GB + Qwen3 ~32GB + Qwen3.5 ~35GB) |
+| **Template** | PyTorch 2.x / CUDA 12.x | Standard |
+
+**Budget option:** 1x A100 80GB — works fine, just slower inference.
+
+**Fast option:** 2x H100 80GB — use `--num-gpus 2` for ~2x faster inference per model.
+
+> **Note:** If using a Network Volume, the pod won't support exposed TCP (no SCP/SFTP). Use the GitHub clone method (Step 3) instead.
+
+---
+
 ## Prerequisites
 
 - SSH public key already generated on your Mac (`~/.ssh/id_ed25519.pub`)
-- Runpod pod deployed with **public IP / exposed TCP** enabled
-- **GPU**: 1x H100 80GB (or A100 80GB)
+- Runpod pod deployed (see spec above)
 - **Template**: PyTorch 2.x / CUDA 12.x
-- **Disk**: 100GB+ (for model weights)
 
 ---
 
@@ -174,6 +189,7 @@ Models run sequentially (one at a time, FP8 quantization).
 uv run main.py --content-dir <path>    # Required: path to content folders
                --output-dir <path>     # Default: ./results
                --models <name> [name]  # Default: all three models
+               --num-gpus <N>          # Default: 1 (tensor parallelism for multi-GPU)
                --skip-server           # Use existing vLLM server (don't start/stop)
 ```
 
