@@ -18,7 +18,7 @@ MODELS = [
         model_id="LGAI-EXAONE/EXAONE-4.0-32B",
         vllm_args=[
             "--dtype", "auto",
-            "--max-model-len", "65536",
+            "--max-model-len", "32768",
             "--gpu-memory-utilization", "0.95",
         ],
         description="EXAONE 4.0 32B (LG AI Research, Korean-optimized)",
@@ -28,7 +28,7 @@ MODELS = [
         model_id="Qwen/Qwen3-32B",
         vllm_args=[
             "--dtype", "auto",
-            "--max-model-len", "65536",
+            "--max-model-len", "32768",
             "--gpu-memory-utilization", "0.90",
             "--quantization", "fp8",
         ],
@@ -39,7 +39,7 @@ MODELS = [
         model_id="Qwen/Qwen3.5-35B-A3B",
         vllm_args=[
             "--dtype", "auto",
-            "--max-model-len", "65536",
+            "--max-model-len", "32768",
             "--gpu-memory-utilization", "0.90",
             "--quantization", "fp8",
         ],
