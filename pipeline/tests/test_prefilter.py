@@ -97,9 +97,17 @@ class TestPrefilterFolder:
             assert '수학 학습' in result
             assert 'PNG' not in result
 
-    def test_returns_char_count(self):
+    def test_skips_files_without_korean(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            with open(os.path.join(tmpdir, 'index.html'), 'w') as f:
-                f.write('<div>Hello</div>')
+            with open(os.path.join(tmpdir, 'framework.js'), 'w') as f:
+                f.write('function init() { console.log("loaded"); }')
             result = prefilter_folder(tmpdir)
-            assert len(result) > 0
+            assert result == ''
+
+    def test_keeps_files_with_korean(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with open(os.path.join(tmpdir, 'content.html'), 'w') as f:
+                f.write('<div>이것은 한국어 교육 콘텐츠입니다. 수학을 배워봅시다.</div>')
+            result = prefilter_folder(tmpdir)
+            assert '한국어' in result
+            assert '수학' in result

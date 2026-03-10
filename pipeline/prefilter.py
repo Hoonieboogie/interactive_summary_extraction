@@ -75,50 +75,74 @@ def prefilter_text(text: str) -> str:
 
 _TARGET_EXTENSIONS = {'.html', '.js', '.json'}
 
-# Directories that contain framework/library code, never educational content.
-# This is universal across web content frameworks.
-_SKIP_DIRS = {'js', 'exe', 'wgts', 'corp', 'css', 'node_modules', 'lib', 'vendor'}
-
-# File patterns that are never educational content
-_SKIP_PATTERNS = re.compile(
-    r'(\.min\.js$'           # Minified libraries
-    r'|_\d{8}$'              # Backup files like index.html_20240325
-    r'|player\.js$'          # iSpring player engine (1.7MB, pure framework)
-    r'|browsersupport\.js$'  # Browser detection scripts
+# Universally safe file-level skips (not engine-specific)
+_SKIP_FILE_RE = re.compile(
+    r'(\.min\.js$'     # Minified libraries — universal web convention, never educational
+    r'|_\d{8}$'        # Backup files with date suffix (e.g. index.html_20240325)
     r')',
     re.IGNORECASE,
 )
 
+# After filtering, files with Korean density below this are framework code
+# with scattered Korean UI labels/error messages, not educational content.
+# Educational content: 20-60%+ Korean density after filtering.
+# Framework code: <3% Korean density after filtering.
+_MIN_KOREAN_DENSITY = 0.03
+
+
+def _count_korean_chars(text: str) -> int:
+    """Count the number of Korean characters in text."""
+    return len(_KOREAN_RE.findall(text))
+
 
 def prefilter_folder(folder_path: str) -> str:
-    """Read educational .html/.js/.json files from a content folder, apply pre-filter.
+    """Read .html/.js/.json files from a content folder, apply pre-filter.
 
-    Skips framework directories and library files that never contain
-    educational content. Walks subdirectories selectively (e.g. data/slide*.js
-    for iSpring) while skipping framework dirs (js/, wgts/, corp/, etc.).
+    Engine-agnostic: uses CONTENT-BASED filtering, not directory/file names.
+    Each file is independently filtered, then included only if its filtered
+    output has sufficient Korean text density (>=3%). This universally
+    separates educational content from framework code regardless of
+    content engine or directory structure.
+
+    The filtering pipeline per file:
+    1. Strip SVG, CSS, comments, inline styles, SVG paths
+    2. Extract Korean strings from mega-lines (>50K chars)
+    3. Strip long code lines (>500 chars without Korean)
+    4. Check Korean density — include only if >=3%
     """
     parts: list[str] = []
 
     for root, dirs, files in os.walk(folder_path):
-        # Skip framework directories (modifying dirs in-place prunes the walk)
-        rel_root = os.path.relpath(root, folder_path)
-        dirs[:] = [d for d in dirs if d.lower() not in _SKIP_DIRS]
+        # Only skip node_modules — universally safe, never educational
+        dirs[:] = [d for d in dirs if d != 'node_modules']
 
         for fname in sorted(files):
             ext = os.path.splitext(fname)[1].lower()
             if ext not in _TARGET_EXTENSIONS:
                 continue
-            if _SKIP_PATTERNS.search(fname):
+            if _SKIP_FILE_RE.search(fname):
                 continue
             fpath = os.path.join(root, fname)
             try:
                 with open(fpath, 'r', encoding='utf-8', errors='replace') as f:
                     content = f.read()
-                if content.strip():
-                    rel = os.path.relpath(fpath, folder_path)
-                    parts.append(f"--- FILE: {rel} ---\n{content}")
+                if not content.strip():
+                    continue
+
+                # Filter per file FIRST, then check Korean density
+                filtered = prefilter_text(content)
+                if not filtered:
+                    continue
+
+                korean_count = _count_korean_chars(filtered)
+                density = korean_count / len(filtered) if filtered else 0
+
+                if density < _MIN_KOREAN_DENSITY:
+                    continue
+
+                rel = os.path.relpath(fpath, folder_path)
+                parts.append(f"--- FILE: {rel} ---\n{filtered}")
             except (OSError, UnicodeDecodeError):
                 continue
 
-    raw = '\n\n'.join(parts)
-    return prefilter_text(raw)
+    return '\n\n'.join(parts)
