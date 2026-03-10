@@ -5,6 +5,7 @@ Usage:
     uv run main.py --content-dir ../sample_contents --output-dir ./results
     uv run main.py --content-dir ../sample_contents --output-dir ./results --models exaone4-32b qwen3-32b
     uv run main.py --content-dir ../sample_contents --output-dir ./results --skip-server
+    uv run main.py --content-dir ../sample_contents --output-dir ./results --num-gpus 2
 """
 
 import argparse
@@ -55,14 +56,17 @@ async def process_model(
     filtered_contents: dict[str, str],
     output_dir: str,
     skip_server: bool = False,
+    num_gpus: int = 1,
 ) -> list[dict]:
     """Process all contents with a single model. Returns list of result dicts."""
     console.print(f"\n[bold magenta]Stage 2: {model.name}[/bold magenta]")
     console.print(f"  Model: {model.description}")
+    if num_gpus > 1:
+        console.print(f"  GPUs: {num_gpus} (tensor parallel)")
 
     server = None
     if not skip_server:
-        server = VLLMServer(model)
+        server = VLLMServer(model, num_gpus=num_gpus)
         server.start()
 
     results = []
@@ -123,6 +127,12 @@ def main():
         action="store_true",
         help="Skip vLLM server management (assumes server already running)",
     )
+    parser.add_argument(
+        "--num-gpus",
+        type=int,
+        default=1,
+        help="Number of GPUs for tensor parallelism (default: 1)",
+    )
     args = parser.parse_args()
 
     # Resolve models
@@ -154,7 +164,7 @@ def main():
 
     for model in selected:
         results = asyncio.run(
-            process_model(model, filtered, args.output_dir, args.skip_server)
+            process_model(model, filtered, args.output_dir, args.skip_server, args.num_gpus)
         )
         all_results[model.name] = results
 

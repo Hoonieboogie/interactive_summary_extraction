@@ -108,9 +108,10 @@ async def call_llm(
 class VLLMServer:
     """Manages a vLLM server subprocess."""
 
-    def __init__(self, model: ModelConfig, port: int = VLLM_PORT):
+    def __init__(self, model: ModelConfig, port: int = VLLM_PORT, num_gpus: int = 1):
         self.model = model
         self.port = port
+        self.num_gpus = num_gpus
         self.process: subprocess.Popen | None = None
 
     def start(self) -> None:
@@ -121,6 +122,8 @@ class VLLMServer:
             "--port", str(self.port),
             *self.model.vllm_args,
         ]
+        if self.num_gpus > 1:
+            cmd.extend(["--tensor-parallel-size", str(self.num_gpus)])
         console = Console()
         console.print(f"  Starting vLLM: {self.model.model_id}")
         console.print(f"  Command: {' '.join(cmd)}")
