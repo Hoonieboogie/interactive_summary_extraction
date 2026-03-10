@@ -6,6 +6,9 @@ set -euo pipefail
 
 echo "=== Pipeline v5.0 RunPod Setup ==="
 
+# 0. Fix for RunPod network filesystem (MFS) — hardlinks not supported
+export UV_LINK_MODE=copy
+
 # 1. Install uv
 if ! command -v uv &> /dev/null; then
     echo "Installing uv..."
