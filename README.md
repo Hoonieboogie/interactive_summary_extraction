@@ -74,7 +74,7 @@ Then on Runpod:
 apt-get update
 apt-get install unzip -y
 cd /workspace
-unzip repo.zip
+unzip -q repo.zip
 cd interactive_summary_extraction
 
 # Run setup script (installs uv, dependencies, vLLM)
