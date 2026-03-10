@@ -1,8 +1,0 @@
-[project]
-name = "interactive-summary-extraction"
-version = "5.0.0"
-description = "LLM-first universal summary extractor for educational HTML content"
-requires-python = ">=3.10"
-dependencies = [
-    "vllm>=0.17.0",
-]

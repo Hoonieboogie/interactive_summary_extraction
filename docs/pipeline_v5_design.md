@@ -140,37 +140,6 @@ JSON 형식으로 응답할 것:
 {CONTENT}
 ```
 
-## Infrastructure: Local Model
-
-Primary deployment target is **local inference** (no per-token cost).
-
-| Config                        | VRAM     | Throughput       | Time for 300K  |
-|-------------------------------|----------|------------------|----------------|
-| Qwen3 8B on A100 80GB (FP16) | ~16 GB   | ~3,000+ tok/s    | ~5-6 hours     |
-| Qwen3 8B on RTX 4090 (Q4)    | ~7 GB    | ~100-140 tok/s   | ~5-7 days      |
-| Qwen3 8B on RTX 3060 (Q4)    | ~7 GB    | ~7-10 tok/s      | Impractical    |
-
-- **Recommended engine**: vLLM (2.7x throughput via continuous batching)
-- **Recommended model**: Qwen3 8B (best Korean quality among open-source models)
-- **Total cost**: GPU rental only ($20-50 on cloud A100)
-
-### API Fallback (for POC / validation phase)
-
-| Model                          | Total Cost (300K) | Korean Quality |
-|--------------------------------|-------------------|----------------|
-| Gemini 2.5 Flash Lite (batch)  | **$57**           | Good           |
-| Qwen3 8B (API)                 | **$69**           | Best           |
-| GPT-4o-mini (batch)            | ~$86              | Good           |
-
-## Risks & Mitigations
-
-| Risk                          | Severity | Mitigation                                          |
-|-------------------------------|----------|-----------------------------------------------------|
-| Hallucination                 | Low      | temperature=0, "only use source content" instruction |
-| Output inconsistency          | Medium   | Run once, cache results                              |
-| Image-heavy content (no text) | Medium   | Flag if < 100 chars Korean text; future: Vision LLM  |
-| Mixed/code-heavy content      | Low      | Prompt explicitly ignores code                       |
-| Korean quality varies         | Low      | Qwen3 > Claude > GPT > Gemini > Llama for Korean    |
 
 ## Validation Strategy
 
@@ -179,33 +148,3 @@ Phase 1: POC           →  100 samples, 3 models in parallel, evaluate quality
 Phase 2: Validation    →  1,000 samples, human review scoring (1-5)
 Phase 3: Production    →  Batch all 300K, post-validate flagged items (~5-10%)
 ```
-
-## File Structure
-
-```
-pipeline/
-├── index.js              Orchestrator (pre-filter → synthesize → report)
-├── prefilter.js          Universal pre-filter (strip SVG/CSS/styles)
-├── synthesizer.js        LLM prompt + local model / API call
-├── compare.js            Multi-model comparison tool
-├── .env                  Config (backend, model, API key)
-└── package.json
-```
-
-## Relationship to v4.0
-
-v5.0 does NOT replace v4.0. They serve different purposes:
-
-- **v5.0** = baseline that works on ALL 300K contents immediately
-- **v4.0** = optimization for known engine types (better accuracy, lower token cost)
-
-Future: v4 engine-specific distillers can feed cleaner input to the same LLM prompt, improving quality for high-volume engine types while v5 handles the long tail.
-
-## Sources
-
-- ScrapeGraphAI-100k: LLM-Based Web Information Extraction (arXiv, Feb 2026)
-- HalluLens: LLM Hallucination Benchmark (ACL 2025) — 1.5-4.6% hallucination rate
-- DataRobot 2025: LLM scrapers require 70% less maintenance than rule-based parsers
-- Gemini API Pricing: ai.google.dev/gemini-api/docs/pricing
-- Qwen3 Technical Report: arxiv.org/pdf/2505.09388
-- vLLM Performance Benchmarks: blog.vllm.ai/2024/09/05/perf-update.html
