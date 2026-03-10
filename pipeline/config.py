@@ -19,8 +19,7 @@ MODELS = [
         vllm_args=[
             "--dtype", "auto",
             "--max-model-len", "65536",
-            "--gpu-memory-utilization", "0.90",
-            "--quantization", "fp8",
+            "--gpu-memory-utilization", "0.95",
         ],
         description="EXAONE 4.0 32B (LG AI Research, Korean-optimized)",
     ),
