@@ -132,11 +132,15 @@ class VLLMServer:
             text=True,
         )
 
-        if not self._wait_for_health(console, timeout=600):
+        success, output = self._wait_for_health(console, timeout=600)
+        if not success:
+            if output:
+                console.print(f"\n[bold red]  vLLM error output:[/bold red]")
+                console.print(output[-3000:])
             self.stop()
             raise RuntimeError(f"vLLM server failed to start for {self.model.model_id}")
 
-    def _wait_for_health(self, console: Console, timeout: int = 600) -> bool:
+    def _wait_for_health(self, console: Console, timeout: int = 600) -> tuple[bool, str]:
         """Poll /v1/models until the server responds or timeout, with spinner."""
         url = f"http://localhost:{self.port}/v1/models"
         start = time.monotonic()
@@ -149,17 +153,21 @@ class VLLMServer:
                     resp = httpx.get(url, timeout=5.0)
                     if resp.status_code == 200:
                         live.update(Text(f"  vLLM server ready ({elapsed}s)", style="bold green"))
-                        return True
+                        return True, ""
                 except httpx.ConnectError:
                     pass
                 if self.process and self.process.poll() is not None:
                     stdout = self.process.stdout.read() if self.process.stdout else ""
-                    live.update(Text(f"  vLLM process exited with code {self.process.returncode}", style="bold red"))
-                    console.print(f"  Output: {stdout[-2000:]}")
-                    return False
+                    return False, stdout
                 live.update(Spinner("dots", text=f"Loading model weights... ({elapsed}s)"))
                 time.sleep(5)
-        return False
+        # Timeout — grab whatever output is available
+        stdout = ""
+        if self.process and self.process.stdout:
+            import select
+            if select.select([self.process.stdout], [], [], 0)[0]:
+                stdout = self.process.stdout.read()
+        return False, stdout
 
     def stop(self) -> None:
         """Stop the vLLM server."""
