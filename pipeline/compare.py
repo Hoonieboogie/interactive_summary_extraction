@@ -124,13 +124,13 @@ _HTML_TEMPLATE = """\
       <th>Errors</th>
     </tr>
     {% for model_name in model_names %}
-    {% set entries = results[model_name] %}
+    {% set t = totals[model_name] %}
     <tr>
       <td>{{ model_name }}</td>
-      <td>{{ "%.1f"|format(entries | sum(attribute='latency_ms') / 1000) }}s</td>
-      <td>{{ "%.0f"|format(entries | sum(attribute='latency_ms') / (entries | length or 1)) }}ms</td>
-      <td>{{ entries | sum(attribute='prompt_tokens') }}</td>
-      <td>{{ entries | selectattr('error', 'defined') | list | length }}</td>
+      <td>{{ "%.1f"|format(t.total_latency / 1000) }}s</td>
+      <td>{{ "%.0f"|format(t.avg_latency) }}ms</td>
+      <td>{{ t.total_prompt_tokens }}</td>
+      <td>{{ t.errors }}</td>
     </tr>
     {% endfor %}
   </table>
@@ -166,6 +166,19 @@ def generate_html_report(results: dict[str, list[dict]], output_path: str) -> No
         input_chars[cid] = chars
         flags[cid] = chars < 100
 
+    # Pre-compute totals in Python (safe when entries have error instead of metrics)
+    totals = {}
+    for model_name, entries in results.items():
+        total_latency = sum(e.get("latency_ms", 0) for e in entries)
+        total_prompt = sum(e.get("prompt_tokens", 0) for e in entries)
+        errors = sum(1 for e in entries if "error" in e)
+        totals[model_name] = type("T", (), {
+            "total_latency": total_latency,
+            "avg_latency": total_latency / max(len(entries), 1),
+            "total_prompt_tokens": total_prompt,
+            "errors": errors,
+        })()
+
     template = Template(_HTML_TEMPLATE)
     html = template.render(
         generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
@@ -175,6 +188,7 @@ def generate_html_report(results: dict[str, list[dict]], output_path: str) -> No
         flags=flags,
         input_chars=input_chars,
         results=results,
+        totals=totals,
     )
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
