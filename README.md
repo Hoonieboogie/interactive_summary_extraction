@@ -77,7 +77,7 @@ cd interactive_summary_extraction
 bash pipeline/setup_runpod.sh
 
 # Activate uv in current shell
-source ~/.bashrc
+source $HOME/.local/bin/env
 ```
 
 ---
