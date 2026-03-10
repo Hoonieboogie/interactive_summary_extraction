@@ -43,7 +43,33 @@ The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, s
 
 ---
 
-## Step 3 — Clone and Archive the Repo (on your Mac)
+## Step 3 — Clone the Repo on Runpod
+
+Since the repo is also on GitHub (public), you can clone directly on Runpod:
+
+```bash
+cd /workspace
+git clone https://github.com/Hoonieboogie/interactive_summary_extraction.git
+cd interactive_summary_extraction
+
+# Run setup script (installs uv, dependencies, vLLM)
+bash pipeline/setup_runpod.sh
+
+# Activate uv in current shell
+source $HOME/.local/bin/env
+```
+
+To pull updates later:
+```bash
+cd /workspace/interactive_summary_extraction
+git pull
+```
+
+**Skip to Step 6 if using this method.**
+
+---
+
+## Step 3 (Alternative) — Clone and Archive the Repo (on your Mac)
 
 ```bash
 git clone https://HoonHan:<TOKEN>@git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
