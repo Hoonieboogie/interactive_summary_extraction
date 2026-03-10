@@ -2,12 +2,12 @@
 
 ## Architecture
 
-Sequential 3-model comparison on a single H100 80GB GPU.
+Sequential 3-model comparison on H100 80GB GPU (single or multi-GPU with tensor parallelism).
 Each model is loaded via vLLM as a subprocess, processes all content, then unloads.
 
 ```
 For each model:
-  1. Start vLLM server (subprocess, FP8, localhost:8000)
+  1. Start vLLM server (subprocess, localhost:8000, optional --tensor-parallel-size)
   2. Pre-filter all content folders (cached, done once)
   3. Send each content via HTTP POST to /v1/chat/completions
   4. Save results as JSON
@@ -17,11 +17,11 @@ Generate comparison report (terminal + HTML)
 
 ## Models
 
-| Model | HuggingFace ID | Type | Active Params | VRAM (FP8) | vLLM Version |
-|---|---|---|---|---|---|
-| EXAONE 4.0 32B | `LGAI-EXAONE/EXAONE-4.0-32B` | Dense | 32B | ~32 GB | >= 0.10.0 |
-| Qwen3-32B | `Qwen/Qwen3-32B` | Dense | 32.8B | ~33 GB | >= 0.8.4 |
-| Qwen3.5-35B-A3B | `Qwen/Qwen3.5-35B-A3B` | MoE+DeltaNet | 3B | ~35 GB | Nightly only |
+| Model | HuggingFace ID | Type | Active Params | Precision | VRAM | vLLM Version |
+|---|---|---|---|---|---|---|
+| EXAONE 4.0 32B | `LGAI-EXAONE/EXAONE-4.0-32B` | Dense | 32B | BF16 (FP8 not supported) | ~60 GB | >= 0.10.0 |
+| Qwen3-32B | `Qwen/Qwen3-32B` | Dense | 32.8B | FP8 | ~33 GB | >= 0.8.4 |
+| Qwen3.5-35B-A3B | `Qwen/Qwen3.5-35B-A3B` | MoE+DeltaNet | 3B | FP8 | ~35 GB | Nightly only |
 
 **EXAONE 4.0**: Non-commercial license. Best Korean benchmarks (KMMLU-Redux 72.7). Requires transformers >= 4.54.0.
 
@@ -72,7 +72,7 @@ Generate comparison report (terminal + HTML)
 - `build_messages()` — constructs system + user chat messages, truncates at 200K chars
 - `parse_llm_response()` — extracts JSON summary, handles markdown fences, `<think>` tags, plain text fallback
 - `call_llm()` — async HTTP POST to vLLM, returns summary + metrics
-- `VLLMServer` — manages vLLM subprocess (start with health check, stop with graceful termination)
+- `VLLMServer` — manages vLLM subprocess (start with health check + spinner, stop with graceful termination, optional `num_gpus` for tensor parallelism)
 
 ### `compare.py`
 - `print_terminal_report()` — Rich table with model columns, latency/token stats
@@ -80,7 +80,7 @@ Generate comparison report (terminal + HTML)
 
 ### `config.py`
 - `ModelConfig` dataclass — name, model_id, vllm_args, description
-- `MODELS` — list of 3 model configs (all FP8, max-model-len 65536)
+- `MODELS` — list of 3 model configs (EXAONE BF16, Qwen models FP8, max-model-len 32768)
 - `SYSTEM_PROMPT` — Korean 3-line summary extraction prompt
 - Constants: `VLLM_PORT=8000`, `MAX_TOKENS=512`, `TEMPERATURE=0`, `MAX_CONTENT_CHARS=200000`
 
@@ -88,7 +88,7 @@ Generate comparison report (terminal + HTML)
 - `discover_contents()` — finds content subdirectories
 - `prefilter_all()` — pre-filters all content (runs once, shared across models)
 - `process_model()` — async: starts vLLM, processes all content, saves JSON, stops vLLM
-- `main()` — CLI entry point with argparse
+- `main()` — CLI entry point with argparse (`--content-dir`, `--output-dir`, `--models`, `--num-gpus`, `--skip-server`)
 
 ## Test Coverage
 
