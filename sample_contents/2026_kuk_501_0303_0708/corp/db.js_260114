@@ -1,0 +1,146 @@
+window.apn = window.apn || {};
+
+apn.widgetMap = function()
+{
+	// 공통 UX
+	if (window.eduWgtAnimSprite){
+		apn.widgets['edu.wgt.animSprite'] = window.eduWgtAnimSprite; apn.widgets['edu.wgt.animSprite'].APX_PUB_PRELOAD = true;
+	}
+	if (window.eduWgtAnimScene){
+		apn.widgets['edu.wgt.animScene'] = window.eduWgtAnimScene; apn.widgets['edu.wgt.animScene'].APX_PUB_PRELOAD = true;
+	}
+	if (window.eduWgtVideoPlayer){
+		apn.widgets['edu.wgt.videoPlayer'] = window.eduWgtVideoPlayer; apn.widgets['edu.wgt.videoPlayer'].APX_PUB_PRELOAD = true;
+	}
+	if (window.eduWgtAudioPlayer){
+		apn.widgets['edu.wgt.audioPlayer'] = window.eduWgtAudioPlayer; apn.widgets['edu.wgt.audioPlayer'].APX_PUB_PRELOAD = true;
+	}
+	if (window.eduWgtAudioPlayerMF){
+		apn.widgets['edu.wgt.audioPlayerMF'] = window.eduWgtAudioPlayerMF; apn.widgets['edu.wgt.audioPlayerMF'].APX_PUB_PRELOAD = true;
+	}
+	if (window.eduWgtSubtitle){
+		apn.widgets['edu.wgt.subtitle'] = window.eduWgtSubtitle; apn.widgets['edu.wgt.subtitle'].APX_PUB_PRELOAD = true;
+	}
+
+	if (window.uxWgtDotIndicator){
+		apn.widgets['ux.wgt.dotIndicator'] = window.uxWgtDotIndicator; apn.widgets['ux.wgt.dotIndicator'].APX_PUB_PRELOAD = true;
+	}
+	if (window.uxWgtBtnImage){
+		apn.widgets['ux.wgt.btnImage'] = window.uxWgtBtnImage; apn.widgets['ux.wgt.btnImage'].APX_PUB_PRELOAD = true;
+	}
+	if (window.uxWgtYT){
+		apn.widgets['ux.wgt.YT'] = window.uxWgtYT; apn.widgets['ux.wgt.YT'].APX_PUB_PRELOAD = true;
+	}
+	if (window.uxWgtIFRAME){
+		apn.widgets['ux.wgt.IFRAME'] = window.uxWgtIFRAME; apn.widgets['ux.wgt.IFRAME'].APX_PUB_PRELOAD = true;
+	}
+	if (window.uxWgtTimer){
+		apn.widgets['ux.wgt.timer'] = window.uxWgtTimer; apn.widgets['ux.wgt.timer'].APX_PUB_PRELOAD = true;
+	}
+	if (window.uxWgtCounter){
+		apn.widgets['ux.wgt.counter'] = window.uxWgtCounter; apn.widgets['ux.wgt.counter'].APX_PUB_PRELOAD = true;
+	}
+
+	//#170706 블루가위젯적용
+	if (window.eduWgtAnimHolder2){
+		apn.widgets['edu.wgt.animHolder2'] = window.eduWgtAnimHolder2; apn.widgets['edu.wgt.animHolder2'].APX_PUB_PRELOAD = true;
+	}
+	if (window.eduWgtSceneFly) apn.widgets['edu.wgt.sceneFly'] = window.eduWgtSceneFly;
+	if (window.eduWgtSketchPad) apn.widgets['edu.wgt.sketchPad'] = window.eduWgtSketchPad;
+	if (window.eduWgtColoringPad) apn.widgets['edu.wgt.coloringPad'] = window.eduWgtColoringPad;
+	// if (window.eduWgtScratchPad) apn.widgets['edu.wgt.scratchPad'] = window.eduWgtScratchPad;
+	// if (window.eduWgtScratchPad2) apn.widgets['edu.wgt.scratchPad2'] = window.eduWgtScratchPad2;
+	if (window.uxWgtPlayerVol) apn.widgets['ux.wgt.playerVol'] = window.uxWgtPlayerVol;
+	if (window.uxWgtInputVkbd) apn.widgets['ux.wgt.inputVkbd'] = window.uxWgtInputVkbd;
+	if (window.uxWgtInfo) apn.widgets['ux.wgt.info'] = window.uxWgtInfo;
+	if (window.uxWgtLocal) apn.widgets['ux.wgt.local'] = window.uxWgtLocal;
+	if (window.uxWgtSceneScrl) apn.widgets['ux.wgt.sceneScrl'] = window.uxWgtSceneScrl;
+	if (window.uxWgtLngSwitchCntr) apn.widgets['ux.wgt.lngSwitchCntr'] = window.uxWgtLngSwitchCntr;
+	if (window.uxWgtHTTP) apn.widgets['ux.wgt.http'] = window.uxWgtHTTP;
+	if (window.uxWgtDataFile) apn.widgets['ux.wgt.dataFile'] = window.uxWgtDataFile;
+	if (window.uxWgtMaskTxt) apn.widgets['ux.wgt.maskTxt'] = window.uxWgtMaskTxt;
+	if (window.uxWgtMotion) apn.widgets['ux.wgt.motion'] = window.uxWgtMotion;
+	if (window.uxWgtInputKbd) apn.widgets['ux.wgt.inputKbd'] = window.uxWgtInputKbd;
+	if (window.uxWgtImgCut) apn.widgets['ux.wgt.imgCut'] = window.uxWgtImgCut;
+	//#170905 미디어동기스크롤 2
+	if (window.uxWgtPlayerScrl) apn.widgets['ux.wgt.playerScrl'] = window.uxWgtPlayerScrl;
+	///////////////////////
+
+	// SGG
+	if (window.eduWgtMagicTouch) apn.widgets['edu.wgt.magicTouch'] = window.eduWgtMagicTouch;
+	if (window.eduWgtDragLine) apn.widgets['edu.wgt.dragLine'] = window.eduWgtDragLine;
+	if (window.eduWgtKeyText)apn.widgets['edu.wgt.keyText'] = window.eduWgtKeyText;
+	if (window.eduWgtSceneAni) apn.widgets['edu.wgt.sceneAni'] = window.eduWgtSceneAni;
+	if (window.eduWgtKeyTextTaped) apn.widgets['edu.wgt.keyTextTaped'] = window.eduWgtKeyTextTaped;
+	if (window.eduWgtBtnPrint) apn.widgets['edu.wgt.btnPrint'] = window.eduWgtBtnPrint;
+	if (window.eduWgtScratchPad) apn.widgets['edu.wgt.scratchPad'] = window.eduWgtScratchPad;
+	if (window.uxWgtImgSprite) apn.widgets['ux.wgt.imgSprite'] = window.uxWgtImgSprite;
+	if (window.uxWgtShtSprite) apn.widgets['ux.wgt.shtSprite'] = window.uxWgtShtSprite;
+
+	if (window.uxWgtGrpToggleImage) apn.widgets['ux.wgt.grpToggleImage'] = window.uxWgtGrpToggleImage;
+	if (window.uxWgtGrpToggleText) apn.widgets['ux.wgt.grpToggleText'] = window.uxWgtGrpToggleText;
+	if (window.uxWgtGrpToggleLayerCntr) apn.widgets['ux.wgt.grpToggleLayerCntr'] = window.uxWgtGrpToggleLayerCntr;
+	if (window.uxWgtInputText) apn.widgets['ux.wgt.inputText'] = window.uxWgtInputText;
+	if (window.uxWgtPatch3) apn.widgets['ux.wgt.patch3'] = window.uxWgtPatch3;
+	if (window.uxWgtPatch9) apn.widgets['ux.wgt.patch9'] = window.uxWgtPatch9;
+	if (window.uxWgtCursor) apn.widgets['ux.wgt.cursor'] = window.uxWgtCursor;
+	if (window.uxWgtPlayerBtn) apn.widgets['ux.wgt.playerBtn'] = window.uxWgtPlayerBtn;
+	if (window.uxWgtPlayerSeek) apn.widgets['ux.wgt.playerSeek'] = window.uxWgtPlayerSeek;
+	if (window.uxWgtPlayerTime) apn.widgets['ux.wgt.playerTime'] = window.uxWgtPlayerTime;
+	if (window.uxWgtInputSelect) apn.widgets['ux.wgt.inputSelect'] = window.uxWgtInputSelect;
+	if (window.uxWgtDataTbl) apn.widgets['ux.wgt.dataTbl'] = window.uxWgtDataTbl;
+
+	if (window.msWgtNote) apn.widgets['ms.wgt.note'] = window.msWgtNote;
+	if (window.msWgtNoteImage) apn.widgets['ms.wgt.noteImage'] = window.msWgtNoteImage;
+	if (window.msWgtNoteText) apn.widgets['ms.wgt.noteText'] = window.msWgtNoteText;
+	if (window.msWgtNoteLayer) apn.widgets['ms.wgt.noteLayer'] = window.msWgtNoteLayer;
+	if (window.msWgtSound) apn.widgets['ms.wgt.sound'] = window.msWgtSound;
+	if (window.msWgtTimePlay) apn.widgets['ms.wgt.timePlay'] = window.msWgtTimePlay;
+	if (window.msWgtSyncScroll) apn.widgets['ms.wgt.syncScroll'] = window.msWgtSyncScroll;
+	if (window.msWgtSyncBlind) apn.widgets['ms.wgt.syncBlind'] = window.msWgtSyncBlind;
+
+	if (window.sggWgtLsnSong) apn.widgets['sgg.wgt.lsnSong'] = window.sggWgtLsnSong;
+	if (window.sggWgtLsnSongPlayer) apn.widgets['sgg.wgt.lsnSongPlayer'] = window.sggWgtLsnSongPlayer;
+	if (window.sggWgtApi) apn.widgets['sgg.wgt.api'] = window.sggWgtApi;
+
+	if (window.sggWgtAnimateCC) apn.widgets['sgg.wgt.animateCC'] = window.sggWgtAnimateCC;
+	if (window.sggWgtTextAnimation) apn.widgets['sgg.wgt.textAnimation'] = window.sggWgtTextAnimation;
+
+	if (window.sggWgtDndContainer) apn.widgets['sgg.wgt.dndContainer'] = window.sggWgtDndContainer;
+	if (window.sggWgtDndDrag) apn.widgets['sgg.wgt.dndDrag'] = window.sggWgtDndDrag;
+	if (window.sggWgtDndArea) apn.widgets['sgg.wgt.dndArea'] = window.sggWgtDndArea;
+	if (window.sggWgtPagedContainerEx) apn.widgets['sgg.wgt.pagedContainerEx'] = window.sggWgtPagedContainerEx;
+	if (window.sggWgtRotateContainer) apn.widgets['sgg.wgt.rotateContainer'] = window.sggWgtRotateContainer;
+	if (window.sggWgtPopupContainer) apn.widgets['sgg.wgt.popupContainer'] = window.sggWgtPopupContainer;
+	if (window.sggWgtTabContainer) apn.widgets['sgg.wgt.tabContainer'] = window.sggWgtTabContainer;
+	if (window.sggWgtButton) apn.widgets['sgg.wgt.button'] = window.sggWgtButton;
+	if (window.sggWgtGridCanvas) apn.widgets['sgg.wgt.gridCanvas'] = window.sggWgtGridCanvas;
+	if (window.sggWgtLineGraph) apn.widgets['sgg.wgt.lineGraph'] = window.sggWgtLineGraph;
+	if (window.sggWgtStarScore) apn.widgets['sgg.wgt.starScore'] = window.sggWgtStarScore;
+	if (window.sggWgtCalendar) apn.widgets['sgg.wgt.calendar'] = window.sggWgtCalendar;
+	if (window.sggWgtCheckBox) apn.widgets['sgg.wgt.checkBox'] = window.sggWgtCheckBox;
+	if (window.sggWgtRadioButton) apn.widgets['sgg.wgt.radioButton'] = window.sggWgtRadioButton;
+	if (window.sggWgtPageScheduler) apn.widgets['sgg.wgt.pageScheduler'] = window.sggWgtPageScheduler;
+	if (window.sggWgtNoteSyncContainer) apn.widgets['sgg.wgt.noteSyncContainer'] = window.sggWgtNoteSyncContainer;
+	if (window.sggWgtInputSelect) apn.widgets['sgg.wgt.inputSelect'] = window.sggWgtInputSelect;
+	if (window.sggWgtImagePopupViewer) apn.widgets['sgg.wgt.imagePopupViewer'] = window.sggWgtImagePopupViewer;
+	if (window.sggWgtScratchPad) apn.widgets['sgg.wgt.scratchPad'] = window.sggWgtScratchPad;
+	if (window.sggWgtSlider) apn.widgets['sgg.wgt.slider'] = window.sggWgtSlider;
+	if (window.sggWgtZoomContainer) apn.widgets['sgg.wgt.zoomContainer'] = window.sggWgtZoomContainer;
+	if (window.sggWgtMagnifier) apn.widgets['sgg.wgt.magnifier'] = window.sggWgtMagnifier;
+	//if (window.sggWgtStarScore2) apn.widgets['sgg.wgt.starScore2'] = window.sggWgtStarScore2;
+	if (window.sggWgtCheckAnswer) apn.widgets['sgg.wgt.checkAnswer'] = window.sggWgtCheckAnswer;
+	if (window.sggWgtLocalPopup) apn.widgets['sgg.wgt.localPopup'] = window.sggWgtLocalPopup;
+	if (window.sggWgtPathTween) apn.widgets['sgg.wgt.pathTween'] = window.sggWgtPathTween;
+	if (window.sggWgtQuizChoice) apn.widgets['sgg.wgt.quizChoice'] = window.sggWgtQuizChoice;
+	if (window.sggWgtCheckAnswerContainer) apn.widgets['sgg.wgt.checkAnswerContainer'] = window.sggWgtCheckAnswerContainer;
+	if (window.sggWgtKakaoMap) apn.widgets['sgg.wgt.kakaoMap'] = window.sggWgtKakaoMap;
+	if (window.sggWgtTable) apn.widgets['sgg.wgt.table'] = window.sggWgtTable;
+	if (window.sggWgtConnectLineContainer) apn.widgets['sgg.wgt.connectLineContainer'] = window.sggWgtConnectLineContainer;
+	if (window.sggWgtAreaButtonContainer) apn.widgets['sgg.wgt.areaButtonContainer'] = window.sggWgtAreaButtonContainer;
+	if (window.eduWgtStroke) apn.widgets['edu.wgt.stroke'] = window.eduWgtStroke;
+	if (window.sggWgtActiveKeyText) apn.widgets['sgg.wgt.activeKeyText'] = window.sggWgtActiveKeyText;
+}
+
+
+window.apn=window.apn||{};apn.theme={EDU:{UI:{title:"AspenEdu"},styles:{normal:{fillStyle:"#FFFFFF",strokeStyle:"#7E7E7E",lineWidth:1,lineDash:null,lineEnd:"square",borderRadiusTopLeft:0,borderRadiusTopRight:0,borderRadiusBottomLeft:0,borderRadiusBottomRight:0,font:"Nanum Gothic",fontSize:"24px",fontStyle:"#000000",fontItalic:false,fontBold:false,textMultiLine:false,fontUnderlined:false,text:"",textAlign:"center",textValign:"middle",textPadding:8,textWordWrap:true,fontStrokeStyle:"#FFA500",fontStrokeWidth:0,alpha:1,angle:0,keepRatio:false,title:"",visibility:true,dragX:false,dragY:false,dragInParent:false,dragContainParent:false,ltrSp:0,lnSp:0}},properties:{trEffectForward:"none",trEffectBackward:"none",trTiming:"ease-in-out",trDuration:0}}};window.apn=window.apn||{};apn.widgetDevice={EDU:{UI:{title:"AspenEdu"},skinID:"Apple",themeID:"EDU",wgtLibID:"EDU",device:{screenSize:[{w:1171,h:768,preset:true,icon:{w:72,h:72},grid:{w:10,h:10}}]},exeModule:{sggMusic:{title:"Textbook-Music",module:"sggCExeMusic"}},font:[{title:"나눔 고딕",height:1.3,ln:"ko",face:"Nanum Gothic",type:"google",path:"//font.i-scream.co.kr/html5/NanumGothic.css",preview:"DB/sgg/imgs/fonts/nanumgothic.png"},{title:"본 고딕",height:1.3,ln:"ko",face:"Noto Sans KR",type:"google",path:"//font.i-scream.co.kr/html5/NotoSansKR.css",preview:"DB/sgg/imgs/fonts/notosanskr.png"},{title:"고도체",height:1.3,ln:"ko",face:"Godo",type:"google",path:"//font.i-scream.co.kr/html5/godo.css",preview:"DB/sgg/imgs/fonts/godo.png"},{title:"헤움 명조",height:1.3,ln:"ko",face:"헤움명조352",type:"google",path:"//font.i-scream.co.kr/html5/heumm.mj352.css",preview:"DB/sgg/imgs/fonts/heumm.mj352.png"},{title:"롯데마트 드림체",height:1.3,ln:"ko",face:"LotteMartDream",type:"google",path:"//font.i-scream.co.kr/html5/lottemartdream.css",preview:"DB/sgg/imgs/fonts/lottemartdream.png"},{title:"롯데마트 행복체",height:1.3,ln:"ko",face:"LotteMartHappy",type:"google",path:"//font.i-scream.co.kr/html5/lottemarthappy.css",preview:"DB/sgg/imgs/fonts/lottemarthappy.png"},{title:"헤움네모드림160",height:1.3,ln:"ko",face:"헤움네모드림160",type:"google",path:"//font.i-scream.co.kr/html5/heumm.nd160.css",preview:"DB/sgg/imgs/fonts/heumm_nemodream160.png"},{title:"헤움심플170",height:1.3,ln:"ko",face:"헤움심플170",type:"google",path:"//font.i-scream.co.kr/html5/heumm.s170.css",preview:"DB/sgg/imgs/fonts/heumm_simple170.png"}]}};window.apn=window.apn||{};apn.dbUI={apx:{wgtEditorStyle:{icon:"DB/sgg/imgs/wgts/common/icon.png",iconThumb:"DB/sgg/imgs/wgts/common/icon_thumb.png",color:"rgb(171,100,0)"}},brand:{title:"i-Scream",logoFull:"DB/sgg/imgs/corp/logoFull.jpg",logoTitle:"DB/sgg/imgs/corp/logoTitle.png",corpURL:"http://www.sigongmedia.co.kr"},system:{exeItrURL:true,exeEventHover:true,exeEventStart:true,exeTxtUnderlined:"border",exeScripting:true,exeItrLtpType:true,exeItrLtpTR:true,exeItrSelfReset:true,exePatchOverlap:1,exeApxMoveWgtByDOM:false,exeNoSetCursor:false,flwModeHide:true,flwModeHideUseLTP:true,pubVersion:"2",scrZoomRatio:4,scrPageTemplateAdd:true,scrUseLetterSpacing:true,scrUseLineSpacing:true,scrUseCategoryFile:true,scrUseCategoryPageTemplate:true,rscAudioExclude:"wav",exeCompress:true,exeDOM2:true,sggMusicImgPath:[{title:"[기본값]",value:""},{title:"악보2016",value:"//www.i-scream.co.kr/data/files/2018/assets/images/music"}],sggMusicImgPathPreset:"//www.i-scream.co.kr/data/files/2018/assets/images/music"},device:"EDU",access:{admin:{admUse:true,scrUseTemplateFile:true,scrUsePgTemplateFile:true,rscImageSharedUpdate:true,rscAudioSharedUpdate:true,rscSvgSharedUpdate:true,fileStorage:"S",fileTemplateFile:true,scrSaveNavHistory:false,rscImageDeposit:"S",rscAudioDeposit:"S",rscVideoDeposit:"S",rscImageLimit:5000000,rscAudioLimit:20000000,rscVideoLimit:50000000,rscSvgLimit:5000000,flwUseRefresh:false,exeUseConsole:true,exeEventDrag:true,rscAudioSharedList:[{title:"2017: UI효과음",id:"n2017.snd.effect"},{title:"음악: UI효과음",id:"music.snd.effect"},{title:"음악: 악기음",id:"music.snd.inst"},{title:"음악: 일반",id:"music.snd.etc"},{title:"음악: 노래익히기",id:"music.snd.songLesson"},{title:"음악: 기타",id:"music.snd.sample"}],rscSvgSharedList:[{title:"2018: 이미지",id:"n2018.svg.images"},{title:"2017: 이미지",id:"n2017.svg.images"},{title:"음악: 초5/6-일반",id:"music.mst.etc"},{title:"음악: 초3/4-일반",id:"music.mst2.etc"},{title:"음악: 노래익히기",id:"music.mst.songLesson"},{title:"음악: 정간보한자/장단기호",id:"music.mst.krMusic"},{title:"음악: 기타",id:"music.mst.sample"}]},first:{scrUseTemplateFile:true,scrUsePgTemplateFile:true,rscImageSharedUpdate:true,rscAudioSharedUpdate:true,rscSvgSharedUpdate:true,fileStorage:"S",fileTemplateFile:true,scrSaveNavHistory:false,rscImageDeposit:"S",rscAudioDeposit:"S",rscVideoDeposit:"S",rscImageLimit:5000000,rscAudioLimit:20000000,rscVideoLimit:50000000,rscSvgLimit:5000000,flwUseRefresh:false,exeUseConsole:true,exeEventDrag:true,rscAudioSharedList:[{title:"2017: UI효과음",id:"n2017.snd.effect"},{title:"음악: UI효과음",id:"music.snd.effect"},{title:"음악: 악기음",id:"music.snd.inst"},{title:"음악: 일반",id:"music.snd.etc"},{title:"음악: 노래익히기",id:"music.snd.songLesson"},{title:"음악: 기타",id:"music.snd.sample"}],rscSvgSharedList:[{title:"2018: 이미지",id:"n2018.svg.images"},{title:"2017: 이미지",id:"n2017.svg.images"},{title:"음악: 초5/6-일반",id:"music.mst.etc"},{title:"음악: 초3/4-일반",id:"music.mst2.etc"},{title:"음악: 노래익히기",id:"music.mst.songLesson"},{title:"음악: 정간보한자/장단기호",id:"music.mst.krMusic"},{title:"음악: 기타",id:"music.mst.sample"}]},second:{fileStorage:"S",scrViewTemplateFile:true,scrViewPgTemplateFile:true,fileTemplateFile:true,scrSaveNavHistory:false,rscImageDeposit:"S",rscAudioDeposit:"S",rscVideoDeposit:"S",rscImageLimit:5000000,rscAudioLimit:20000000,rscVideoLimit:50000000,rscSvgLimit:5000000,flwUseRefresh:false,exeUseConsole:true,exeEventDrag:true,rscAudioSharedList:[{title:"2017: UI효과음",id:"n2017.snd.effect"},{title:"음악: UI효과음",id:"music.snd.effect"},{title:"음악: 악기음",id:"music.snd.inst"},{title:"음악: 일반",id:"music.snd.etc"},{title:"음악: 노래익히기",id:"music.snd.songLesson"},{title:"음악: 기타",id:"music.snd.sample"}],rscSvgSharedList:[{title:"2018: 이미지",id:"n2018.svg.images"},{title:"2017: 이미지",id:"n2017.svg.images"},{title:"음악: 초5/6-일반",id:"music.mst.etc"},{title:"음악: 초3/4-일반",id:"music.mst2.etc"},{title:"음악: 노래익히기",id:"music.mst.songLesson"},{title:"음악: 정간보한자/장단기호",id:"music.mst.krMusic"},{title:"음악: 기타",id:"music.mst.sample"}]}}};apn.widgetLibraryFilter=function(d){if(apn.dbUI){apn.dbUI.access.admin.rscImageSharedList=apn.dbUI.access.first.rscImageSharedList=apn.dbUI.access.second.rscImageSharedList=[{title:"2018: 3패치",id:"n2018.image.3patch"},{title:"2018: 9패치",id:"n2018.image.9patch"},{title:"2018: 이미지",id:"n2018.image.images"},{title:"2018: 플레이어",id:"n2018.image.player"},{title:"2018: 모션시퀀스",id:"n2018.image.sequence"},{title:"2018: UI",id:"n2018.image.ui"},{title:"2017: 3패치",id:"n2017.image.3patch"},{title:"2017: 9패치",id:"n2017.image.9patch"},{title:"2017: 이미지",id:"n2017.image.images"},{title:"2017: 플레이어",id:"n2017.image.player"},{title:"2017: 모션시퀀스",id:"n2017.image.sequence"},{title:"2017: UI",id:"n2017.image.ui"},{title:"우리들은 1학년",id:"k1.image.images"},{title:"음악: 초5/6-음표,악기",id:"music.mst.note",forAdmin:true},{title:"음악: 초5/6-버튼,탭",id:"music.mst.btn"},{title:"음악: 초5/6-기호,숫자,글머리",id:"music.mst.symbol"},{title:"음악: 초5/6-플레이어",id:"music.mst.player"},{title:"음악: 초5/6-9패치",id:"music.mst.9patch"},{title:"음악: 초5/6-3패치",id:"music.mst.3patch"},{title:"음악: 초5/6-일반",id:"music.mst.etc"},{title:"음악: 초5/6-노래익히기",id:"music.mst.songLesson"},{title:"음악: 초3/4-음표,악기",id:"music.mst2.note"},{title:"음악: 초3/4-버튼,탭",id:"music.mst2.btn"},{title:"음악: 초3/4-기호,숫자,글머리",id:"music.mst2.symbol"},{title:"음악: 초3/4-플레이어",id:"music.mst2.player"},{title:"음악: 초3/4-9패치",id:"music.mst2.9patch"},{title:"음악: 초3/4-3패치",id:"music.mst2.3patch"},{title:"음악: 초3/4-일반",id:"music.mst2.etc"},{title:"음악: 초3/4-노래익히기",id:"music.mst2.songLesson"},{title:"음악: 시퀀스 모션",id:"music.mst.motion"},{title:"음악: 음표 소스",id:"music.mst.noteSrc"},{title:"음악: 공통 악기",id:"music.mst.cmnInst"},{title:"음악: 기타",id:"music.mst.sample"}];apn.dbUI.access.admin.help=apn.dbUI.access.first.help=apn.dbUI.access.second.help=[{title:{en:"Mouse and shortcuts",ko:"마우스 사용법 및 단축키"},URL:"http://aspenux.com/docs/help/mouse_shortcuts.html?SNS=Y",width:"980px",height:"96%"},{title:{en:"Examples",ko:"편집 예제"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=02_x0&T=Examples&Tko=%ED%8E%B8%EC%A7%91%20%EC%98%88%EC%A0%9C",width:"94%",height:"96%"},{title:{en:"Video tutorials",ko:"비디오 도움말"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=03&T=Video%20tutorials&Tko=%EB%B9%84%EB%94%94%EC%98%A4%20%EB%8F%84%EC%9B%80%EB%A7%90",width:"94%",height:"96%"},{},{title:{en:"Knowledge Base",ko:"편집/개발지원 문서"},URL:{ko:"http://aspenux.com/docs/KB/index.html?DB=WGT%3BEDT%3BSPT%3BAPX%3BEXE%3BSGG&LN=ko"},width:"80%",height:"90%"},{title:{en:"Update Tracker",ko:"개선작업 현황"},URL:{ko:"http://aspenux.com/tracker.html"},width:"80%",height:"90%"},{title:{en:"Announcement",ko:"공지사항"},URL:"https://www.facebook.com/aspenux",target:"_blank"},{},{title:{en:"Getting started with Aspen Studio",ko:"기본 사용 절차"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=1_1a_1b&T=Getting%20started%20with%20Aspen%20Editor&Tko=%EA%B8%B0%EB%B3%B8%20%EC%82%AC%EC%9A%A9%20%EC%A0%88%EC%B0%A8",width:"94%",height:"96%"},{title:{en:"Widgets",ko:"위젯"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=w0_w1_w2_w3_w4_w5_w6_w7_w9_w10_w11_w12_w13_w14_w15_w16_w17_w18_w8_w19&T=Widgets&Tko=%EC%9C%84%EC%A0%AF",width:"94%",height:"96%"},{title:{en:"Interactive Events",ko:"동적 이벤트"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=e0&T=Interactive%20Events&Tko=%EB%8F%99%EC%A0%81%20%EC%9D%B4%EB%B2%A4%ED%8A%B8",width:"94%",height:"96%"},{title:{en:"Interactive Actions",ko:"동적 액션"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=a0_a1_a2_a3_a4_a5_a6_a7_a8&T=Interactive%20Actions&Tko=%EB%8F%99%EC%A0%81%20%EC%95%A1%EC%85%98",width:"94%",height:"96%"},{title:{en:"Browsers and devices",ko:"지원 브라우저 및 환경 관련 사항"},URL:"http://aspenux.com/docs/help/ux/help_ux.html?F=3&T=Browsers%20and%20devices&Tko=%EC%A7%80%EC%9B%90%20%EB%B8%8C%EB%9D%BC%EC%9A%B0%EC%A0%80%20%EB%B0%8F%20%ED%99%98%EA%B2%BD%20%EA%B4%80%EB%A0%A8%20%EC%82%AC%ED%95%AD",width:"94%",height:"96%"}];if(apn.widgetDevice.EDU.font){apn.dbUI.font=apn.widgetDevice.EDU.font}}if(apn.Project&&apn.Project.FILLSTYLE_PAGE){delete apn.Project.FILLSTYLE_PAGE}if(window.asui&&asui.CFG&&asui.CFG.getLogin()&&asui.CFG.getLogin().memberGroup=="3"){var e;for(var k=0;k<apn.widgetLibrary.EDU.groups.length;k++){for(e=0;e<apn.widgetLibrary.EDU.groups[k].widgets.length;e++){if(apn.widgetLibrary.EDU.groups[k].widgets[e].UI&&apn.widgetLibrary.EDU.groups[k].widgets[e].UI.admin){apn.widgetLibrary.EDU.groups[k].widgets[e].UI.hide=true}}}}if(apn.dbUI&&apn.dbUI.apx&&apn.dbUI.apx.wgtEditorStyle&&apn.dbUI.apx.wgtEditorStyle.icon){var e;for(var k=0;k<apn.widgetLibrary.EDU.groups.length;k++){for(e=0;e<apn.widgetLibrary.EDU.groups[k].widgets.length;e++){if(!apn.widgetLibrary.EDU.groups[k].widgets[e].UI||!apn.widgetLibrary.EDU.groups[k].widgets[e].UI.icon){apn.widgetLibrary.EDU.groups[k].widgets[e].UI=apn.widgetLibrary.EDU.groups[k].widgets[e].UI||{};apn.widgetLibrary.EDU.groups[k].widgets[e].UI.icon=apn.dbUI.apx.wgtEditorStyle.icon}}}}for(var k=0;k<apn.widgetLibrary.EDU.groups.length;k++){for(e=0;e<apn.widgetLibrary.EDU.groups[k].widgets.length;e++){if(!apn.widgetLibrary.EDU.groups[k].widgets[e].shape){apn.widgetLibrary.EDU.groups[k].widgets[e].shape={position:{x:"center",y:"middle"},size:{w:"100%",h:"100%"}}}}}if(apn.dbHelp){var g,f;for(var h=0;h<apn.widgetLibrary.EDU.groups.length;h++){for(g=0;g<apn.widgetLibrary.EDU.groups[h].widgets.length;g++){f=apn.widgetLibrary.EDU.groups[h].widgets[g];if(f.widget&&f.widget.id&&apn.dbHelp[f.widget.id]&&apn.dbHelp[f.widget.id].URL){f.UI=f.UI||{};f.UI.help=apn.dbHelp[f.widget.id].URL}}}}apn.widgetMap()};
