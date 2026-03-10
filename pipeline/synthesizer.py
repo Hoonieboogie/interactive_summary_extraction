@@ -140,7 +140,7 @@ class VLLMServer:
             self.stop()
             raise RuntimeError(f"vLLM server failed to start for {self.model.model_id}")
 
-    def _wait_for_health(self, console: Console, timeout: int = 600) -> tuple[bool, str]:
+    def _wait_for_health(self, console: Console, timeout: int = 900) -> tuple[bool, str]:
         """Poll /v1/models until the server responds or timeout, with spinner."""
         url = f"http://localhost:{self.port}/v1/models"
         start = time.monotonic()
@@ -150,17 +150,17 @@ class VLLMServer:
             while time.monotonic() < deadline:
                 elapsed = int(time.monotonic() - start)
                 try:
-                    resp = httpx.get(url, timeout=5.0)
+                    resp = httpx.get(url, timeout=10.0)
                     if resp.status_code == 200:
                         live.update(Text(f"  vLLM server ready ({elapsed}s)", style="bold green"))
                         return True, ""
-                except httpx.ConnectError:
+                except (httpx.ConnectError, httpx.ReadTimeout, httpx.TimeoutException):
                     pass
                 if self.process and self.process.poll() is not None:
                     stdout = self.process.stdout.read() if self.process.stdout else ""
                     return False, stdout
                 live.update(Spinner("dots", text=f"Loading model weights... ({elapsed}s)"))
-                time.sleep(5)
+                time.sleep(3)
         # Timeout — grab whatever output is available
         stdout = ""
         if self.process and self.process.stdout:
