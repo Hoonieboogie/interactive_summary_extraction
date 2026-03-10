@@ -1,93 +1,170 @@
-# interactive_summary_extraction
+# Interactive Summary Extraction — Pipeline v5.0
 
+교육용 인터랙티브 HTML 콘텐츠에서 3줄 한국어 요약을 자동 추출하는 LLM-first 파이프라인.
 
+- 엔진 탐지 없이 모든 콘텐츠 유형에 범용 적용
+- vLLM + Qwen3.5 로컬 추론 (토큰 비용 $0)
+- H100 SXM 80GB 단일 GPU로 300,000건 처리
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## 프로젝트 구조
 
 ```
-cd existing_repo
-git remote add origin https://git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
-git branch -M main
-git push -uf origin main
+├── pyproject.toml          Python 의존성 (vLLM) — uv sync로 설치
+├── pipeline/               Node.js 파이프라인
+│   ├── index.js            오케스트레이터 (CLI)
+│   ├── prefilter.js        유니버설 프리필터 (SVG/CSS/스타일/주석 제거)
+│   ├── synthesizer.js      LLM 합성 (vLLM / Gemini 백엔드)
+│   ├── .env.example        환경변수 템플릿
+│   └── test/               유닛 테스트
+├── sample_contents/        테스트용 샘플 콘텐츠 (7개)
+└── docs/                   설계 문서
 ```
 
-## Integrate with your tools
+---
 
-* [Set up project integrations](https://git.i-screammedia.com/hoonhan/interactive_summary_extraction/-/settings/integrations)
+## RunPod H100 SXM 환경 설정
 
-## Collaborate with your team
+### 1. Pod 생성
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+- RunPod에서 **GPU Pod** 생성
+- GPU: **H100 SXM 80GB**
+- Template: **RunPod Pytorch 2.x** (CUDA, Python 사전설치됨)
+- Disk: 최소 100GB (모델 다운로드용)
 
-## Test and Deploy
+### 2. uv 설치
 
-Use the built-in continuous integration in GitLab.
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
+```
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+### 3. Node.js 설치
 
-***
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+apt-get install -y nodejs
+```
 
-# Editing this README
+### 4. 레포 클론 및 의존성 설치
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```bash
+git clone https://git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
+cd interactive_summary_extraction
 
-## Suggestions for a good README
+# Python 의존성 (vLLM)
+uv sync
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+# Node.js 의존성
+cd pipeline
+npm install
+cp .env.example .env
+cd ..
+```
 
-## Name
-Choose a self-explaining name for your project.
+### 5. vLLM 서버 시작
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```bash
+uv run vllm serve Qwen/Qwen3.5-35B-A3B \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --max-model-len 131072 \
+  --dtype auto \
+  --gpu-memory-utilization 0.92
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+첫 실행 시 Hugging Face에서 모델을 다운로드합니다 (~70GB, 수 분 소요).
+`INFO: Application startup complete.` 메시지가 나올 때까지 대기합니다.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+> `--max-model-len 131072` (128K 토큰): 프리필터 후 대부분의 콘텐츠에 충분.
+> 더 큰 콘텐츠가 있을 경우 `--max-model-len 262144`로 높이되, 메모리 부족 시 `--quantization fp8`을 추가.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### 6. 파이프라인 실행
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+```bash
+cd pipeline
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+# 단일 콘텐츠 폴더 처리
+node index.js ../sample_contents/2026_kuk_501_0304_1112
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# 전체 샘플 배치 처리
+node index.js ../sample_contents
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+# 프로덕션 (300K 콘텐츠)
+node index.js /path/to/all/contents
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+---
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## 출력 형식
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+단일 처리 시 `pipeline/output/<folder_name>.json`:
+```json
+{
+  "id": "2026_kuk_501_0304_1112",
+  "summary": "학습 주제. 주요 학습 활동. 학습 목표 및 기대 효과",
+  "metadata": {
+    "extractedAt": "2026-03-10T12:00:00.000Z",
+    "charCount": 45230,
+    "fileCount": 11,
+    "pipeline": "v5.0"
+  }
+}
+```
 
-## License
-For open source projects, say how it is licensed.
+배치 처리 시 `pipeline/output/report_<timestamp>.jsonl` (한 줄 = 한 콘텐츠).
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+---
+
+## 환경 변수 (.env)
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `BACKEND` | `vllm` | `vllm` (로컬) 또는 `gemini` (API 폴백) |
+| `VLLM_BASE_URL` | `http://localhost:8000/v1` | vLLM 서버 주소 |
+| `VLLM_MODEL` | `Qwen/Qwen3.5-35B-A3B` | vLLM 모델명 |
+| `GEMINI_API_KEY` | - | Gemini API 키 (gemini 백엔드 사용 시) |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini 모델명 |
+| `MAX_CHARS` | `400000` | 프리필터 후 최대 문자수 (초과 시 잘림) |
+| `CONCURRENCY` | `1` | 배치 처리 동시성 (vLLM 배칭에 의존하므로 1 권장) |
+
+---
+
+## 테스트
+
+```bash
+cd pipeline
+npm test
+```
+
+---
+
+## 모델 선택 가이드
+
+| 모델 | 타입 | VRAM | 용도 |
+|------|------|------|------|
+| Qwen3.5-35B-A3B | MoE | ~70GB FP16 | **기본 추천** — 35B 성능, 3B 속도 |
+| Qwen3.5-9B | Dense | ~18GB | MoE 문제 시 대안 |
+| Qwen3.5-122B-A10B | MoE | ~65GB Q4 | 품질 개선 필요 시 |
+
+모델 변경 시 `.env`의 `VLLM_MODEL`과 vLLM serve 명령의 모델명을 함께 수정.
+
+---
+
+## 트러블슈팅
+
+**vLLM OOM (Out of Memory)**
+```bash
+# FP8 양자화로 메모리 절약
+uv run vllm serve Qwen/Qwen3.5-35B-A3B --quantization fp8 --max-model-len 131072
+
+# 또는 더 작은 모델 사용
+uv run vllm serve Qwen/Qwen3.5-9B --max-model-len 131072
+```
+
+**vLLM 서버 연결 실패**
+- 서버가 완전히 시작되었는지 확인 (`Application startup complete`)
+- `curl http://localhost:8000/v1/models` 로 서버 상태 확인
+
+**결과에 summary가 null**
+- `charCount`가 100 미만이면 이미지 중심 콘텐츠 (Vision LLM 필요)
+- `error` 필드 확인 — LLM 응답 파싱 실패 가능성
