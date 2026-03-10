@@ -3,24 +3,87 @@
 LLM-first universal summary extractor for 300K+ interactive educational contents.
 Runs 3 local LLMs on a single H100 80GB GPU via vLLM, compares results side-by-side.
 
-## Quick Start (RunPod)
+---
 
-### 1. Pod Setup
+# How to Run the Project on Runpod
 
+## Context
+
+The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, so you cannot clone directly from Runpod. Instead, clone locally on your Mac and transfer via SCP.
+
+---
+
+## Prerequisites
+
+- SSH public key already generated on your Mac (`~/.ssh/id_ed25519.pub`)
+- Runpod pod deployed with **public IP / exposed TCP** enabled
 - **GPU**: 1x H100 80GB (or A100 80GB)
 - **Template**: PyTorch 2.x / CUDA 12.x
 - **Disk**: 100GB+ (for model weights)
 
-### 2. Clone & Install
+---
+
+## Step 1 — Add SSH Key to Runpod
+
+1. Copy your public key:
+   ```bash
+   cat ~/.ssh/id_ed25519.pub
+   ```
+2. Go to Runpod web UI → **Settings → SSH Public Keys**
+3. Paste the key and save
+
+---
+
+## Step 2 — Get SSH Connection Details
+
+1. Go to your pod in the Runpod dashboard
+2. Click **Connect**
+3. Copy the **"SSH over exposed TCP (Supports SCP & SFTP)"** command
+   - It looks like: `ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519`
+
+---
+
+## Step 3 — Clone and Zip the Repo (on your Mac)
 
 ```bash
-git clone <repo-url> && cd interactive_summary_extraction
+git clone https://HoonHan:<TOKEN>@git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
+zip -r repo.zip interactive_summary_extraction
+```
+
+---
+
+## Step 4 — Transfer to Runpod via SCP (on your Mac)
+
+```bash
+scp -P <port> -i ~/.ssh/id_ed25519 repo.zip root@<ip>:/workspace/
+```
+
+Replace `<port>` and `<ip>` with the values from Step 2.
+
+---
+
+## Step 5 — Unzip and Install on Runpod
+
+SSH into your pod first:
+```bash
+ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519
+```
+
+Then on Runpod:
+```bash
+apt-get update
+apt-get install unzip -y
+cd /workspace
+unzip repo.zip
+cd interactive_summary_extraction
 
 # Run setup script (installs uv, dependencies, vLLM)
 bash pipeline/setup_runpod.sh
 ```
 
-### 3. Run Pipeline
+---
+
+## Step 6 — Run Pipeline
 
 ```bash
 cd pipeline
@@ -34,7 +97,9 @@ uv run main.py --content-dir ../sample_contents --output-dir ./results --models 
 # Available models: exaone4-32b, qwen3-32b, qwen3.5-35b-a3b
 ```
 
-### 4. View Results
+---
+
+## Step 7 — View Results
 
 ```bash
 # Terminal: comparison table printed automatically
@@ -43,7 +108,19 @@ cat ./results/comparison.html
 # Or copy to local machine and open in browser
 ```
 
-## Pipeline Overview
+---
+
+## Notes
+
+- The `channel XX: open failed` messages when SSHing are harmless — ignore them.
+- Every time you spin up a **new pod**, you need to repeat Steps 4–5 since pods don't persist data by default. Consider using a **Runpod Network Volume** if you want persistent storage.
+- SCP only works on pods with **exposed TCP / public IP**. Basic SSH (proxied) does not support SCP.
+
+---
+
+# Pipeline Details
+
+## Overview
 
 ```
 Content Folder → Pre-filter → vLLM (Model) → JSON Summary → Comparison Report
@@ -101,83 +178,3 @@ cd pipeline
 uv sync --dev
 uv run pytest -v
 ```
-
----
-
-# How to Run the Project on Runpod
-
-## Context
-
-The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, so you cannot clone directly from Runpod. Instead, clone locally on your Mac and transfer via SCP.
-
----
-
-## Prerequisites
-
-- SSH public key already generated on your Mac (`~/.ssh/id_ed25519.pub`)
-- Runpod pod deployed with **public IP / exposed TCP** enabled
-
----
-
-## Step 1 — Add SSH Key to Runpod
-
-1. Copy your public key:
-   ```bash
-   cat ~/.ssh/id_ed25519.pub
-   ```
-2. Go to Runpod web UI → **Settings → SSH Public Keys**
-3. Paste the key and save
-
----
-
-## Step 2 — Get SSH Connection Details
-
-1. Go to your pod in the Runpod dashboard
-2. Click **Connect**
-3. Copy the **"SSH over exposed TCP (Supports SCP & SFTP)"** command
-   - It looks like: `ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519`
-
----
-
-## Step 3 — Clone and Zip the Repo (on your Mac)
-
-```bash
-git clone https://HoonHan:<TOKEN>@git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
-zip -r repo.zip interactive_summary_extraction
-```
-
----
-
-## Step 4 — Transfer to Runpod via SCP (on your Mac)
-
-```bash
-scp -P <port> -i ~/.ssh/id_ed25519 repo.zip root@<ip>:/workspace/
-```
-
-Replace `<port>` and `<ip>` with the values from Step 2.
-
----
-
-## Step 5 — Unzip on Runpod
-
-SSH into your pod first:
-```bash
-ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519
-```
-
-Then on Runpod:
-```bash
-apt-get update
-apt-get install unzip -y
-cd /workspace
-unzip repo.zip
-cd interactive_summary_extraction
-```
-
----
-
-## Notes
-
-- The `channel XX: open failed` messages when SSHing are harmless — ignore them.
-- Every time you spin up a **new pod**, you need to repeat Steps 4–5 since pods don't persist data by default. Consider using a **Runpod Network Volume** if you want persistent storage.
-- SCP only works on pods with **exposed TCP / public IP**. Basic SSH (proxied) does not support SCP.
