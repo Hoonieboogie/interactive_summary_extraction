@@ -184,10 +184,11 @@ Phase 3: Production    →  Batch all 300K, post-validate flagged items (~5-10%)
 
 ```
 pipeline/
-├── index.js              Orchestrator (extract → synthesize → report)
-├── extractor.js          Universal Korean text extraction (engine-agnostic)
-├── synthesizer.js        LLM prompt + API call
-├── .env                  API key
+├── index.js              Orchestrator (pre-filter → synthesize → report)
+├── prefilter.js          Universal pre-filter (strip SVG/CSS/styles)
+├── synthesizer.js        LLM prompt + local model / API call
+├── compare.js            Multi-model comparison tool
+├── .env                  Config (backend, model, API key)
 └── package.json
 ```
 
