@@ -43,11 +43,11 @@ The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, s
 
 ---
 
-## Step 3 — Clone and Zip the Repo (on your Mac)
+## Step 3 — Clone and Archive the Repo (on your Mac)
 
 ```bash
 git clone https://HoonHan:<TOKEN>@git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
-zip -r repo.zip interactive_summary_extraction
+tar czf repo.tar.gz interactive_summary_extraction
 ```
 
 ---
@@ -55,14 +55,14 @@ zip -r repo.zip interactive_summary_extraction
 ## Step 4 — Transfer to Runpod via SCP (on your Mac)
 
 ```bash
-scp -P <port> -i ~/.ssh/id_ed25519 repo.zip root@<ip>:/workspace/
+scp -P <port> -i ~/.ssh/id_ed25519 repo.tar.gz root@<ip>:/workspace/
 ```
 
 Replace `<port>` and `<ip>` with the values from Step 2.
 
 ---
 
-## Step 5 — Unzip and Install on Runpod
+## Step 5 — Extract and Install on Runpod
 
 SSH into your pod first:
 ```bash
@@ -71,10 +71,8 @@ ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519
 
 Then on Runpod:
 ```bash
-apt-get update
-apt-get install unzip -y
 cd /workspace
-unzip -q repo.zip
+tar xzf repo.tar.gz
 cd interactive_summary_extraction
 
 # Run setup script (installs uv, dependencies, vLLM)
