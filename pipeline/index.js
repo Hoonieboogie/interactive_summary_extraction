@@ -8,6 +8,11 @@ const { synthesize } = require('./synthesizer');
 
 const LOW_TEXT_THRESHOLD = 100;
 
+function getModelTag() {
+  const model = process.env.VLLM_MODEL || 'Qwen/Qwen3.5-35B-A3B';
+  return model.split('/').pop();
+}
+
 async function processOne(folderPath) {
   const id = path.basename(folderPath);
   console.log(`[${id}] Reading and pre-filtering...`);
@@ -43,6 +48,7 @@ async function processOne(folderPath) {
   console.log(`[${id}] OK`);
   return {
     id,
+    model: process.env.VLLM_MODEL || 'Qwen/Qwen3.5-35B-A3B',
     summary: result.summary,
     metadata: { extractedAt: new Date().toISOString(), charCount, fileCount, pipeline: 'v5.0' },
   };
@@ -57,8 +63,9 @@ async function processBatch(baseDir) {
   const outputDir = path.join(__dirname, 'output');
   await fs.promises.mkdir(outputDir, { recursive: true });
 
+  const tag = getModelTag();
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const outputPath = path.join(outputDir, `report_${timestamp}.jsonl`);
+  const outputPath = path.join(outputDir, `report_${tag}_${timestamp}.jsonl`);
   const stream = fs.createWriteStream(outputPath, { flags: 'a' });
 
   let processed = 0;
@@ -116,7 +123,8 @@ async function main() {
     const result = await processOne(resolved);
     const outputDir = path.join(__dirname, 'output');
     await fs.promises.mkdir(outputDir, { recursive: true });
-    const outputPath = path.join(outputDir, `${result.id}.json`);
+    const tag = getModelTag();
+    const outputPath = path.join(outputDir, `${result.id}_${tag}.json`);
     await fs.promises.writeFile(outputPath, JSON.stringify(result, null, 2));
     console.log(`\nResult saved to: ${outputPath}`);
     console.log(JSON.stringify(result, null, 2));

@@ -95,12 +95,63 @@ node index.js /path/to/all/contents
 
 ---
 
+## 3-모델 비교 테스트
+
+3개 모델의 결과를 자동으로 비교합니다.
+
+| 모델 | HuggingFace ID | Context | VRAM |
+|------|---------------|---------|------|
+| Qwen3.5-35B-A3B | `Qwen/Qwen3.5-35B-A3B` | 262K | ~70GB FP16 |
+| EXAONE 4.0 32B | `LGAI-EXAONE/EXAONE-4.0-32B` | 131K | ~62GB BF16 |
+| Qwen3-32B | `Qwen/Qwen3-32B` | 32K | ~64GB FP16 |
+
+### 자동 비교 (권장)
+
+```bash
+# 프로젝트 루트에서 실행
+bash run_compare.sh sample_contents
+```
+
+이 스크립트는 순차적으로:
+1. vLLM 서버 시작 (모델 A) → 파이프라인 실행 → 결과 저장
+2. vLLM 서버 재시작 (모델 B) → 파이프라인 실행 → 결과 저장
+3. vLLM 서버 재시작 (모델 C) → 파이프라인 실행 → 결과 저장
+4. 3개 모델 결과 비교표 출력
+
+### 수동 비교
+
+모델별로 직접 실행할 경우:
+
+```bash
+cd pipeline
+
+# 모델 1
+VLLM_MODEL=Qwen/Qwen3.5-35B-A3B node index.js ../sample_contents
+
+# 모델 2 (vLLM 서버를 해당 모델로 재시작 후)
+VLLM_MODEL=LGAI-EXAONE/EXAONE-4.0-32B node index.js ../sample_contents
+
+# 모델 3 (vLLM 서버를 해당 모델로 재시작 후)
+VLLM_MODEL=Qwen/Qwen3-32B node index.js ../sample_contents
+
+# 비교
+node compare.js
+```
+
+### 비교 결과
+
+- 터미널에 모델별 요약 비교표 출력
+- `pipeline/output/comparison.json`에 JSON 형태로 저장
+
+---
+
 ## 출력 형식
 
-단일 처리 시 `pipeline/output/<folder_name>.json`:
+단일 처리 시 `pipeline/output/<folder_name>_<model>.json`:
 ```json
 {
   "id": "2026_kuk_501_0304_1112",
+  "model": "Qwen/Qwen3.5-35B-A3B",
   "summary": "학습 주제. 주요 학습 활동. 학습 목표 및 기대 효과",
   "metadata": {
     "extractedAt": "2026-03-10T12:00:00.000Z",
@@ -111,7 +162,7 @@ node index.js /path/to/all/contents
 }
 ```
 
-배치 처리 시 `pipeline/output/report_<timestamp>.jsonl` (한 줄 = 한 콘텐츠).
+배치 처리 시 `pipeline/output/report_<model>_<timestamp>.jsonl` (한 줄 = 한 콘텐츠).
 
 ---
 

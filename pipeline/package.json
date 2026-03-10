@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node index.js",
+    "compare": "node compare.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
