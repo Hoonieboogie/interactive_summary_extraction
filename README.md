@@ -64,10 +64,8 @@ Replace `<port>` and `<ip>` with the values from Step 2.
 
 ## Step 5 — Extract and Install on Runpod
 
-SSH into your pod first:
-```bash
-ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519
-```
+SSH into your pod first: 일반 SCP
+
 
 Then on Runpod:
 ```bash
