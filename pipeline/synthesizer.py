@@ -15,6 +15,10 @@ import time
 from dataclasses import dataclass
 
 import httpx
+from rich.console import Console
+from rich.live import Live
+from rich.spinner import Spinner
+from rich.text import Text
 
 from config import (
     MAX_CONTENT_CHARS,
@@ -117,8 +121,9 @@ class VLLMServer:
             "--port", str(self.port),
             *self.model.vllm_args,
         ]
-        print(f"  Starting vLLM: {self.model.model_id}")
-        print(f"  Command: {' '.join(cmd)}")
+        console = Console()
+        console.print(f"  Starting vLLM: {self.model.model_id}")
+        console.print(f"  Command: {' '.join(cmd)}")
 
         self.process = subprocess.Popen(
             cmd,
@@ -127,29 +132,33 @@ class VLLMServer:
             text=True,
         )
 
-        if not self._wait_for_health(timeout=600):
+        if not self._wait_for_health(console, timeout=600):
             self.stop()
             raise RuntimeError(f"vLLM server failed to start for {self.model.model_id}")
 
-        print(f"  vLLM server ready: {self.model.model_id}")
-
-    def _wait_for_health(self, timeout: int = 600) -> bool:
-        """Poll /v1/models until the server responds or timeout."""
+    def _wait_for_health(self, console: Console, timeout: int = 600) -> bool:
+        """Poll /v1/models until the server responds or timeout, with spinner."""
         url = f"http://localhost:{self.port}/v1/models"
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            try:
-                resp = httpx.get(url, timeout=5.0)
-                if resp.status_code == 200:
-                    return True
-            except httpx.ConnectError:
-                pass
-            if self.process and self.process.poll() is not None:
-                stdout = self.process.stdout.read() if self.process.stdout else ""
-                print(f"  vLLM process exited with code {self.process.returncode}")
-                print(f"  Output: {stdout[-2000:]}")
-                return False
-            time.sleep(5)
+        start = time.monotonic()
+        deadline = start + timeout
+
+        with Live(Spinner("dots", text="Loading model weights..."), console=console, refresh_per_second=4) as live:
+            while time.monotonic() < deadline:
+                elapsed = int(time.monotonic() - start)
+                try:
+                    resp = httpx.get(url, timeout=5.0)
+                    if resp.status_code == 200:
+                        live.update(Text(f"  vLLM server ready ({elapsed}s)", style="bold green"))
+                        return True
+                except httpx.ConnectError:
+                    pass
+                if self.process and self.process.poll() is not None:
+                    stdout = self.process.stdout.read() if self.process.stdout else ""
+                    live.update(Text(f"  vLLM process exited with code {self.process.returncode}", style="bold red"))
+                    console.print(f"  Output: {stdout[-2000:]}")
+                    return False
+                live.update(Spinner("dots", text=f"Loading model weights... ({elapsed}s)"))
+                time.sleep(5)
         return False
 
     def stop(self) -> None:

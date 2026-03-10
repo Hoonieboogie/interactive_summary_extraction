@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 import httpx
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn
 
 from compare import generate_html_report, print_terminal_report
 from config import MODELS, ModelConfig
@@ -67,21 +68,31 @@ async def process_model(
     results = []
     try:
         async with httpx.AsyncClient() as client:
-            for cid, text in filtered_contents.items():
-                console.print(f"  Processing: {cid}...", end=" ")
-                result = await call_llm(client, model.model_id, text)
-                result["content_id"] = cid
-                result["input_chars"] = len(text)
-                result["timestamp"] = datetime.now(timezone.utc).isoformat()
-                results.append(result)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                TimeElapsedColumn(),
+                console=console,
+            ) as progress:
+                task = progress.add_task(model.name, total=len(filtered_contents))
+                for cid, text in filtered_contents.items():
+                    progress.update(task, description=f"{model.name} → {cid}")
+                    result = await call_llm(client, model.model_id, text)
+                    result["content_id"] = cid
+                    result["input_chars"] = len(text)
+                    result["timestamp"] = datetime.now(timezone.utc).isoformat()
+                    results.append(result)
 
-                if "error" in result:
-                    console.print(f"[red]ERROR: {result['error']}[/red]")
-                else:
-                    console.print(
-                        f"[green]OK[/green] ({result['latency_ms']}ms, "
-                        f"{result.get('prompt_tokens', 0)} tok)"
-                    )
+                    if "error" in result:
+                        progress.console.print(f"  [red]✗ {cid}: {result['error']}[/red]")
+                    else:
+                        progress.console.print(
+                            f"  [green]✓ {cid}[/green] ({result['latency_ms']}ms, "
+                            f"{result.get('prompt_tokens', 0)} tok)"
+                        )
+                    progress.advance(task)
     finally:
         if server:
             server.stop()
