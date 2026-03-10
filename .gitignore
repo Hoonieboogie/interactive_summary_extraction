@@ -4,3 +4,6 @@ node_modules/
 *.log
 .serena/
 pipeline/output/
+pipeline/.venv/
+pipeline/results/
+__pycache__/

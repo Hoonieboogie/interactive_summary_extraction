@@ -1,0 +1,20 @@
+[project]
+name = "summary-extraction-pipeline"
+version = "0.1.0"
+description = "LLM-first universal summary extractor for educational content"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.28",
+    "rich>=13.0",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.25",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
