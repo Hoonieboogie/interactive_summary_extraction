@@ -150,6 +150,39 @@ cat ./results/comparison.html
 
 ---
 
+## Monitoring (Open a Second Terminal)
+
+### Real-time monitoring
+
+```bash
+# GPU memory & utilization (updates every 1s) — watch VRAM fill as model loads
+watch -n 1 nvidia-smi
+
+# Disk usage — watch model weights download
+watch -n 5 'du -sh /root/.cache/huggingface/hub/ 2>/dev/null'
+
+# venv size — watch during setup_runpod.sh install
+watch -n 2 'du -sh /workspace/interactive_summary_extraction/pipeline/.venv 2>/dev/null'
+```
+
+### One-time checks
+
+```bash
+# Check if vLLM server is ready
+curl http://localhost:8000/v1/models 2>/dev/null && echo "READY!" || echo "Not ready yet"
+
+# Check if vLLM process is running
+ps aux | grep vllm
+
+# Check disk space
+df -h /workspace
+
+# Check GPU status (snapshot)
+nvidia-smi
+```
+
+---
+
 ## Notes
 
 - The `channel XX: open failed` messages when SSHing are harmless — ignore them.
