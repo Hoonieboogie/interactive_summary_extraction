@@ -16,10 +16,6 @@ import sys
 import time
 from datetime import datetime, timezone
 
-# Route HuggingFace model cache to network volume if available (RunPod)
-if os.path.isdir("/workspace") and "HF_HOME" not in os.environ:
-    os.environ["HF_HOME"] = "/workspace/.cache/huggingface"
-
 import httpx
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn

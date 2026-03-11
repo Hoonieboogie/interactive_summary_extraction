@@ -72,8 +72,8 @@ cd interactive_summary_extraction
 # Run setup script (installs uv, dependencies, vLLM)
 bash pipeline/setup_runpod.sh
 
-# Activate uv in current shell
-source $HOME/.local/bin/env
+# Activate environment (uv PATH, HF_HOME, UV_LINK_MODE)
+source ~/.bashrc
 ```
 
 To pull updates later:
@@ -119,8 +119,8 @@ cd interactive_summary_extraction
 # Run setup script (installs uv, dependencies, vLLM)
 bash pipeline/setup_runpod.sh
 
-# Activate uv in current shell
-source $HOME/.local/bin/env
+# Activate environment (uv PATH, HF_HOME, UV_LINK_MODE)
+source ~/.bashrc
 ```
 
 ---
