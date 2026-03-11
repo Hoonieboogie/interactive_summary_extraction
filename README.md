@@ -84,8 +84,38 @@ This installs uv, Python dependencies, and vLLM. Takes ~5 minutes on first run. 
 1. Sets `UV_LINK_MODE=copy` (RunPod MFS doesn't support hardlinks)
 2. Routes HuggingFace cache to `/workspace/.cache/huggingface` (persists across pods)
 3. Symlinks `.venv` to `/tmp/` (avoids MFS stale file handle errors)
-4. Installs uv, pipeline deps, and vLLM nightly
+4. Installs uv, pipeline deps, and vLLM
 5. Verifies CUDA, GPU, and all dependencies
+
+**Verify installation manually** (the setup script runs this automatically, but you can re-check anytime):
+
+```bash
+cd pipeline/pipeline_v2
+uv run python -c "
+import torch
+print(f'CUDA: {torch.cuda.is_available()}')
+print(f'GPU:  {torch.cuda.get_device_name(0)}')
+print(f'VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB')
+
+import vllm; print(f'vLLM: {vllm.__version__}')
+import httpx; print(f'httpx: {httpx.__version__}')
+import charset_normalizer; print(f'charset-normalizer: {charset_normalizer.__version__}')
+print('All dependencies OK')
+"
+```
+
+Expected output:
+```
+CUDA: True
+GPU:  NVIDIA A100 80GB PCIe
+VRAM: 79.2 GB
+vLLM: 0.x.x
+httpx: 0.28.x
+charset-normalizer: 3.x.x
+All dependencies OK
+```
+
+If CUDA is `False` or any import fails, the setup did not complete correctly — re-run `bash pipeline/setup_runpod.sh`.
 
 ---
 
