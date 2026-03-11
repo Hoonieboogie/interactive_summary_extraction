@@ -9,6 +9,24 @@ echo "=== Pipeline v5.0 RunPod Setup ==="
 # 0. Fix for RunPod network filesystem (MFS) — hardlinks not supported
 export UV_LINK_MODE=copy
 
+# 0.1. Route HuggingFace cache to /workspace (network volume) for persistence
+if [ -d /workspace ]; then
+    export HF_HOME=/workspace/.cache/huggingface
+    mkdir -p "$HF_HOME"
+    echo "HuggingFace cache: $HF_HOME (network volume, persists across pods)"
+fi
+
+# 0.2. Put venv on local disk to avoid MFS stale file handle errors
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/.venv"
+if mountpoint -q /workspace 2>/dev/null && [[ "$SCRIPT_DIR" == /workspace/* ]]; then
+    echo "Detected network volume — placing venv on local disk..."
+    rm -rf "$VENV_DIR"
+    mkdir -p /tmp/pipeline-venv
+    ln -sf /tmp/pipeline-venv "$VENV_DIR"
+    echo "venv symlinked: $VENV_DIR → /tmp/pipeline-venv"
+fi
+
 # 1. Install uv
 if ! command -v uv &> /dev/null; then
     echo "Installing uv..."
@@ -21,6 +39,12 @@ if ! command -v uv &> /dev/null; then
     echo "Installed uv: $(uv --version)"
 else
     echo "uv already installed: $(uv --version)"
+fi
+
+# Persist HF_HOME and UV_LINK_MODE for future shell sessions
+if ! grep -q 'HF_HOME' ~/.bashrc 2>/dev/null && [ -d /workspace ]; then
+    echo 'export HF_HOME=/workspace/.cache/huggingface' >> ~/.bashrc
+    echo 'export UV_LINK_MODE=copy' >> ~/.bashrc
 fi
 
 # 2. cd to pipeline directory

@@ -18,15 +18,17 @@ The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, s
 | Setting | Value | Why |
 |---|---|---|
 | **GPU** | 1x H100 80GB | Enough for any single 32B model in sequential mode |
-| **Container Disk** | 50 GB | OS + virtualenv + code |
-| **Volume Disk** | 250 GB | Model weights persist between pods (EXAONE ~60GB + Qwen3 ~32GB + Qwen3.5 ~35GB) |
+| **Container Disk** | 50 GB | OS + virtualenv + code (rebuilt each pod) |
+| **Network Volume** | 250 GB (`summary_extraction_vllm`, US-CA-2) | Model weights persist across pod terminations |
 | **Template** | PyTorch 2.x / CUDA 12.x | Standard |
 
 **Budget option:** 1x A100 80GB — works fine, just slower inference.
 
 **Fast option:** 2x H100 80GB — use `--num-gpus 2` for ~2x faster inference per model.
 
-> **Note:** If using a Network Volume, the pod won't support exposed TCP (no SCP/SFTP). Use the GitHub clone method (Step 3) instead.
+> **Important:** The Network Volume is mounted at `/workspace`. Model weights are cached there (`/workspace/.cache/huggingface`) so they survive pod termination. The virtualenv is placed on local disk (container) to avoid MFS filesystem issues. The setup script handles this automatically.
+
+> **Note:** Network Volume pods don't support exposed TCP (no SCP/SFTP). Use the GitHub clone method (Step 3) instead.
 
 ---
 
