@@ -59,6 +59,19 @@ Generate comparison report (terminal + HTML)
 
 **SWF/FLA gap**: 58% of content is Flash (binary). Pipeline outputs empty result and flags these. Future approach: Flash decompilation tool or Vision LLM on rendered screenshots.
 
+### Universality
+
+The pre-filter approach is universal for all **text-based web content** because it targets web fundamentals common to every engine: HTML/CSS/SVG stripping and NL density detection in JS/JSON strings. The LLM handles remaining engine-specific noise (UI labels, nav text) without per-engine code.
+
+**Known gaps** (require different Stage 1 input — Stages 2-3 stay the same):
+
+| Gap | % of Content | Reason | Future Approach |
+|---|---|---|---|
+| Flash binary (SWF/FLA) | 58% | Text compiled in binary | Flash decompiler or Vision LLM |
+| Image-only content | Unknown | Text baked into images/diagrams | Vision LLM |
+| Audio-only content | Unknown | Narration without transcript | Speech-to-text (Whisper) |
+| Obfuscated JS | Unknown | Encoded/encrypted strings bypass NL detection | Not seen in practice yet |
+
 ## Module Details
 
 ### `prefilter.py`
