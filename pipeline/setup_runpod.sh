@@ -53,8 +53,8 @@ cd "$PIPELINE_DIR"
 echo "Installing pipeline dependencies..."
 uv sync --dev
 
-echo "Installing vLLM (nightly for Qwen3.5 support)..."
-uv pip install vllm --extra-index-url https://wheels.vllm.ai/nightly
+echo "Installing vLLM..."
+uv pip install vllm
 
 # 4. Verify installation
 echo ""

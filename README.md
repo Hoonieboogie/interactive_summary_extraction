@@ -78,7 +78,7 @@ bash pipeline/setup_runpod.sh
 source ~/.bashrc
 ```
 
-This installs uv, Python dependencies, and vLLM nightly. Takes ~5 minutes on first run. Model weights are downloaded on first pipeline execution (~15 GB for FP8).
+This installs uv, Python dependencies, and vLLM. Takes ~5 minutes on first run. Model weights are downloaded on first pipeline execution (~15 GB for FP8).
 
 **What the setup script does:**
 1. Sets `UV_LINK_MODE=copy` (RunPod MFS doesn't support hardlinks)

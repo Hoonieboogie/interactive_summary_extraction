@@ -215,8 +215,7 @@ These content types are logged to `skipped_contents.json` by the non-text conten
 | Qwen3.5-27B | `Qwen/Qwen3.5-27B-FP8` | Dense, 27B | 262K tokens | ~31 GB | Apache 2.0 |
 
 ### Deployment
-- Requires **vLLM nightly** build
-- FP8 quantization (~31 GB) fits on single H100 80GB with ~49 GB left for KV cache
+- FP8 quantization (~31 GB) fits on single A100/H100 80GB with ~49 GB left for KV cache
 - `--num-gpus` for multi-GPU tensor parallelism
 
 ### Modular Config
