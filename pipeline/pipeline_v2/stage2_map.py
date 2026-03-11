@@ -24,7 +24,7 @@ CHUNK_MERGE_SYSTEM_PROMPT = """Combine these chunk summaries into a single coher
 반드시 다음 JSON 형식으로 응답하세요:
 {"has_educational_content": true/false, "summary": "통합 요약"}"""
 
-INITIAL_CHUNK_SIZE = 500_000
+INITIAL_CHUNK_SIZE = 500_000  # Overridden by max_model_len when available
 
 
 @dataclass

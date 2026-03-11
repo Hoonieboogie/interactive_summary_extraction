@@ -30,7 +30,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 async def process_content(
-    content_dir: Path, output_dir: Path, model_name: str, llm: LLMClient
+    content_dir: Path, output_dir: Path, model_name: str, llm: LLMClient,
+    max_model_len: int = 65536,
 ) -> dict | None:
     """Process a single content folder through all stages. Returns None if skipped."""
     content_id = content_dir.name
@@ -53,10 +54,13 @@ async def process_content(
     ordered_entries, ordering_response = await order_files(entries, llm)
 
     # Stage 2: Per-File Summarization (Map)
+    # Conservative chunk size: max_model_len * 2 chars (~2 chars/token for mixed content)
+    # Ensures first split produces multiple chunks for overflowing files
+    initial_chunk_size = max_model_len * 2
     total_files = len(ordered_entries)
     file_summaries = []
     for entry in ordered_entries:
-        summary, responses = await summarize_file(entry, total_files, llm)
+        summary, responses = await summarize_file(entry, total_files, llm, initial_chunk_size)
         file_summaries.append(summary)
 
     # Stage 3: Recursive Merge (Reduce)
@@ -103,7 +107,7 @@ async def run(args: argparse.Namespace) -> None:
             if not folder.is_dir():
                 logger.warning(f"Not a directory: {folder}")
                 continue
-            await process_content(folder, args.output_dir, args.model, llm)
+            await process_content(folder, args.output_dir, args.model, llm, model_cfg.max_model_len)
 
         await llm.close()
 
