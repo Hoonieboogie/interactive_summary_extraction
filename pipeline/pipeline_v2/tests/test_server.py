@@ -1,0 +1,19 @@
+import pytest
+from server import build_vllm_command
+from config import get_model_config
+
+
+class TestBuildVllmCommand:
+    def test_default_args(self):
+        cfg = get_model_config("qwen3.5-27b")
+        cmd = build_vllm_command(cfg, num_gpus=1)
+        joined = " ".join(cmd)
+        assert cfg.hf_id in joined
+        assert str(cfg.max_model_len) in joined
+
+    def test_multi_gpu(self):
+        cfg = get_model_config("qwen3.5-27b")
+        cmd = build_vllm_command(cfg, num_gpus=2)
+        joined = " ".join(cmd)
+        assert "--tensor-parallel-size" in joined
+        assert "2" in joined
