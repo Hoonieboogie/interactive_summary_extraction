@@ -152,6 +152,32 @@ cat ./results/comparison.html
 
 ---
 
+## After Terminating a Pod (Pod Recreation)
+
+When you terminate a pod and create a new one **with the same Network Volume**, the repo and model weights are still on `/workspace`. Only the container environment (uv, venv, shell config) is lost.
+
+```bash
+# 1. SSH into the new pod
+
+# 2. Pull latest code
+cd /workspace/interactive_summary_extraction
+git pull
+
+# 3. Re-run setup (re-installs uv, venv, vLLM — model weights are already cached)
+bash pipeline/setup_runpod.sh
+
+# 4. Activate environment
+source ~/.bashrc
+
+# 5. Run pipeline
+cd pipeline
+uv run main.py --content-dir ../sample_contents --output-dir ./results
+```
+
+> **Why is this needed?** The Network Volume (`/workspace`) persists model weights (~60GB each) and code across pods, but the container disk is fresh — uv, the Python venv, and `~/.bashrc` settings (HF_HOME, UV_LINK_MODE) need to be re-created. The setup script handles all of this automatically. Model weights are **not** re-downloaded.
+
+---
+
 ## Monitoring (Open a Second Terminal)
 
 ### Real-time monitoring
