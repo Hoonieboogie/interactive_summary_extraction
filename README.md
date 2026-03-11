@@ -1,294 +1,288 @@
-# Interactive Summary Extraction — Pipeline v5.0
+# Interactive Summary Extraction
 
-LLM-first universal summary extractor for 300K+ interactive educational contents.
-Runs 3 local LLMs on a single H100 80GB GPU via vLLM, compares results side-by-side.
+LLM-based map-reduce summary extractor for 300K+ interactive educational content folders. Extracts a 3-line Korean summary and up to 10 keywords from each content folder using a local LLM via vLLM.
+
+## How It Works
+
+```
+Content Folder
+  -> Stage 1: Discover text files + LLM-inferred reading order
+  -> Stage 2: Summarize each file individually (map)
+  -> Stage 3: Merge all summaries into 3-line summary + keywords (reduce)
+  -> Stage 4: Save JSON output
+```
+
+Each content folder contains mixed files (HTML, JS, CSS, JSON, images, Flash, etc.). The pipeline reads all text-decodable files, skips binary, and lets the LLM handle content filtering — no rule-based pre-processing.
+
+Context overflow is self-correcting: files too large for the context window are automatically chunked, summarized per-chunk, and merged. The reduce stage falls back to pairwise tree merge if all summaries combined exceed the window.
+
+### Model
+
+| Model | HuggingFace ID | Context | VRAM (FP8) | License |
+|---|---|---|---|---|
+| Qwen3.5-27B | `Qwen/Qwen3.5-27B-FP8` | 262K tokens | ~31 GB | Apache 2.0 |
+
+### Output
+
+One JSON per content folder at `<output-dir>/<model>/<content_id>.json`:
+
+```json
+{
+  "content_id": "2018sah401_0301_0607",
+  "model": "qwen3.5-27b",
+  "summary": "첫째 줄. 둘째 줄. 셋째 줄",
+  "keywords": ["키워드1", "키워드2"]
+}
+```
+
+Binary-only content folders (Flash SWF, images only) are logged to `<output-dir>/skipped_contents.json`.
 
 ---
 
-# How to Run the Project on Runpod
+## Running on RunPod
 
-## Context
+### Pod Spec
 
-The GitLab server (`git.i-screammedia.com`) blocks cloud/datacenter IP ranges, so you cannot clone directly from Runpod. Instead, clone locally on your Mac and transfer via SCP.
-
----
-
-## Recommended Pod Spec
-
-| Setting | Value | Why |
+| Setting | Value | Notes |
 |---|---|---|
-| **GPU** | 1x H100 80GB | Enough for any single 32B model in sequential mode |
-| **Container Disk** | 50 GB | OS + virtualenv + code (rebuilt each pod) |
-| **Network Volume** | 250 GB (`summary_extraction_vllm`, US-CA-2) | Model weights persist across pod terminations |
-| **Template** | PyTorch 2.x / CUDA 12.x | Standard |
+| **GPU** | 1x A100 80GB SXM | Qwen3.5-27B-FP8 uses ~31 GB; ~49 GB left for KV cache |
+| **Container Disk** | 30 GB | OS + venv + code (rebuilt each pod) |
+| **Network Volume** | 120 GB | Model weights + repo (persists across pod restarts) |
+| **Template** | PyTorch 2.x / CUDA 12.x | Standard RunPod template |
 
-**Budget option:** 1x A100 80GB — works fine, just slower inference.
-
-**Fast option:** 2x H100 80GB — use `--num-gpus 2` for ~2x faster inference per model.
-
-> **Important:** The Network Volume is mounted at `/workspace`. Model weights are cached there (`/workspace/.cache/huggingface`) so they survive pod termination. The virtualenv is placed on local disk (container) to avoid MFS filesystem issues. The setup script handles this automatically.
-
-> **Note:** Network Volume pods don't support exposed TCP (no SCP/SFTP). Use the GitHub clone method (Step 3) instead.
+> The Network Volume is mounted at `/workspace`. Model weights are cached at `/workspace/.cache/huggingface` so they survive pod termination. The venv is placed on local container disk to avoid MFS filesystem issues.
 
 ---
 
-## Prerequisites
+### Step 1 — Clone the Repo
 
-- SSH public key already generated on your Mac (`~/.ssh/id_ed25519.pub`)
-- Runpod pod deployed (see spec above)
-- **Template**: PyTorch 2.x / CUDA 12.x
-
----
-
-## Step 1 — Add SSH Key to Runpod
-
-1. Copy your public key:
-   ```bash
-   cat ~/.ssh/id_ed25519.pub
-   ```
-2. Go to Runpod web UI → **Settings → SSH Public Keys**
-3. Paste the key and save
-
----
-
-## Step 2 — Get SSH Connection Details
-
-1. Go to your pod in the Runpod dashboard
-2. Click **Connect**
-3. Copy the **"SSH over exposed TCP (Supports SCP & SFTP)"** command
-   - It looks like: `ssh root@<ip> -p <port> -i ~/.ssh/id_ed25519`
-
----
-
-## Step 3 — Clone the Repo on Runpod
-
-Since the repo is also on GitHub (public), you can clone directly on Runpod:
+The GitLab server blocks cloud IPs, so clone from GitHub on RunPod:
 
 ```bash
 cd /workspace
 git clone https://github.com/Hoonieboogie/interactive_summary_extraction.git
 cd interactive_summary_extraction
-
-# Run setup script (installs uv, dependencies, vLLM)
-bash pipeline/setup_runpod.sh
-
-# Activate environment (uv PATH, HF_HOME, UV_LINK_MODE)
-source ~/.bashrc
 ```
 
 To pull updates later:
 ```bash
-cd /workspace/interactive_summary_extraction
-git pull
-```
-
-**Skip to Step 6 if using this method.**
-
----
-
-## Step 3 (Alternative) — Clone and Archive the Repo (on your Mac)
-
-```bash
-git clone https://HoonHan:<TOKEN>@git.i-screammedia.com/hoonhan/interactive_summary_extraction.git
-COPYFILE_DISABLE=1 tar czf repo.tar.gz interactive_summary_extraction
+cd /workspace/interactive_summary_extraction && git pull
 ```
 
 ---
 
-## Step 4 — Transfer to Runpod via SCP (on your Mac)
+### Step 2 — Run Setup
 
 ```bash
-scp -P <port> -i ~/.ssh/id_ed25519 repo.tar.gz root@<ip>:/workspace/
-```
-
-Replace `<port>` and `<ip>` with the values from Step 2.
-
----
-
-## Step 5 — Extract and Install on Runpod
-
-SSH into your pod first: 일반 SCP
-
-
-Then on Runpod:
-```bash
-cd /workspace
-tar xzf repo.tar.gz --no-same-owner
-cd interactive_summary_extraction
-
-# Run setup script (installs uv, dependencies, vLLM)
 bash pipeline/setup_runpod.sh
-
-# Activate environment (uv PATH, HF_HOME, UV_LINK_MODE)
 source ~/.bashrc
 ```
 
+This installs uv, Python dependencies, and vLLM nightly. Takes ~5 minutes on first run. Model weights are downloaded on first pipeline execution (~15 GB for FP8).
+
+**What the setup script does:**
+1. Sets `UV_LINK_MODE=copy` (RunPod MFS doesn't support hardlinks)
+2. Routes HuggingFace cache to `/workspace/.cache/huggingface` (persists across pods)
+3. Symlinks `.venv` to `/tmp/` (avoids MFS stale file handle errors)
+4. Installs uv, pipeline deps, and vLLM nightly
+5. Verifies CUDA, GPU, and all dependencies
+
 ---
 
-## Step 6 — Run Pipeline
+### Step 3 — Run the Pipeline
 
 ```bash
-cd pipeline
+cd pipeline/pipeline_v2
 
-# Run all 3 models (sequential: EXAONE → Qwen3 → Qwen3.5)
-uv run main.py --content-dir ../sample_contents --output-dir ./results
+# Run all content folders
+uv run main.py --content-dir ../../sample_contents --output-dir ./results
 
-# Run a single model
-uv run main.py --content-dir ../sample_contents --output-dir ./results --models qwen3-32b
+# Run specific content folders only
+uv run main.py --content-dir ../../sample_contents --output-dir ./results \
+    --content-ids 2018sah401_0301_0607 2026_kuk_501_0202_0203
 
-# Available models: exaone4-32b, qwen3-32b, qwen3.5-35b-a3b
+# Use an already-running vLLM server (skip auto-start)
+uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server
+```
+
+#### CLI Reference
+
+```
+uv run main.py --content-dir <path>           # Required: root of content folders
+               --output-dir <path>            # Default: ./results
+               --model <name>                 # Default: qwen3.5-27b
+               --content-ids <id> [id ...]    # Process specific folders (default: all)
+               --num-gpus <N>                 # Default: 1 (tensor parallelism)
+               --skip-server                  # Don't start/stop vLLM server
 ```
 
 ---
 
-## Step 7 — View Results
+### Step 4 — Monitor Progress
+
+Open a second terminal (RunPod web terminal or SSH) to monitor.
+
+#### What happens when you run the pipeline
+
+| Phase | What to watch | Duration |
+|---|---|---|
+| vLLM server start | Model loads into GPU memory | 2-5 min (first run downloads weights: ~15 min) |
+| Stage 1: Discovery | Files discovered, ordering LLM call | < 1 min per content |
+| Stage 2: Map | Per-file LLM calls (one per readable file) | 1-30 sec per file |
+| Stage 3: Reduce | Merge all summaries into final result | < 1 min per content |
+| Stage 4: Output | JSON written to disk | Instant |
+
+#### GPU and vLLM monitoring
 
 ```bash
-# Terminal: comparison table printed automatically
-# HTML: open in browser
-cat ./results/comparison.html
-# Or copy to local machine and open in browser
-```
-
----
-
-## After Terminating a Pod (Pod Recreation)
-
-When you terminate a pod and create a new one **with the same Network Volume**, the repo and model weights are still on `/workspace`. Only the container environment (uv, venv, shell config) is lost.
-
-```bash
-# 1. SSH into the new pod
-
-# 2. Pull latest code
-cd /workspace/interactive_summary_extraction
-git pull
-
-# 3. Re-run setup (re-installs uv, venv, vLLM — model weights are already cached)
-bash pipeline/setup_runpod.sh
-
-# 4. Activate environment
-source ~/.bashrc
-
-# 5. Run pipeline
-cd pipeline
-uv run main.py --content-dir ../sample_contents --output-dir ./results
-```
-
-> **Why is this needed?** The Network Volume (`/workspace`) persists model weights (~60GB each) and code across pods, but the container disk is fresh — uv, the Python venv, and `~/.bashrc` settings (HF_HOME, UV_LINK_MODE) need to be re-created. The setup script handles all of this automatically. Model weights are **not** re-downloaded.
-
----
-
-## Monitoring (Open a Second Terminal)
-
-### Real-time monitoring
-
-```bash
-# GPU memory & utilization (updates every 1s) — watch VRAM fill as model loads
+# GPU memory & utilization — watch model load into VRAM (~31 GB)
 watch -n 1 nvidia-smi
 
-# Disk usage — watch model weights download
-watch -n 5 'du -sh /workspace/.cache/huggingface/hub/ 2>/dev/null'
+# Check if vLLM server is ready (returns model list when ready)
+curl -s http://localhost:8000/v1/models | python3 -m json.tool
 
-# venv size — watch during setup_runpod.sh install
-watch -n 2 'du -sh /workspace/interactive_summary_extraction/pipeline/.venv 2>/dev/null'
+# Poll until server is ready
+watch -n 5 'curl -s http://localhost:8000/v1/models 2>/dev/null && echo "READY" || echo "Loading..."'
+
+# Check vLLM process
+ps aux | grep vllm
 ```
 
-### One-time checks
+#### Model weight download (first run only)
 
 ```bash
-# Check if vLLM server is ready
-curl http://localhost:8000/v1/models 2>/dev/null && echo "READY!" || echo "Not ready yet"
+# Watch download progress (~15 GB for Qwen3.5-27B-FP8)
+watch -n 5 'du -sh /workspace/.cache/huggingface/hub/ 2>/dev/null'
+```
 
-# Check if vLLM process is running
-ps aux | grep vllm
+#### Pipeline log output
 
+The pipeline logs to stderr with timestamps. Key log messages to watch:
+
+```
+INFO  Processing: <content_id>          # Starting a content folder
+INFO  <path>: cannot read as text ...   # Binary file skipped (expected)
+INFO  Skipped <id>: no text-readable    # Entire folder is binary (logged to skipped_contents.json)
+INFO  File <path> overflows context...  # File too large, chunking (self-correcting)
+INFO  Summaries overflow context...     # Reduce overflow, pairwise merge (self-correcting)
+INFO  Done: <content_id>               # Content folder complete
+```
+
+#### Disk and results
+
+```bash
 # Check disk space
 df -h /workspace
 
-# Check GPU status (snapshot)
-nvidia-smi
+# Watch results appear
+watch -n 5 'ls -la pipeline/pipeline_v2/results/qwen3.5-27b/ 2>/dev/null'
+
+# Read a result
+cat pipeline/pipeline_v2/results/qwen3.5-27b/<content_id>.json | python3 -m json.tool
+
+# Check skipped contents
+cat pipeline/pipeline_v2/results/skipped_contents.json 2>/dev/null | python3 -m json.tool
 ```
 
 ---
 
-## Notes
+### Step 5 — View Results
 
-- The `channel XX: open failed` messages when SSHing are harmless — ignore them.
-- Every time you spin up a **new pod**, you need to repeat Steps 4–5 since pods don't persist data by default. Consider using a **Runpod Network Volume** if you want persistent storage.
-- SCP only works on pods with **exposed TCP / public IP**. Basic SSH (proxied) does not support SCP.
+```bash
+# List all result files
+ls results/qwen3.5-27b/
+
+# View a specific result
+cat results/qwen3.5-27b/2018sah401_0301_0607.json
+
+# View skipped (binary-only) contents
+cat results/skipped_contents.json
+
+# Count: processed vs skipped
+echo "Processed: $(ls results/qwen3.5-27b/*.json 2>/dev/null | wc -l)"
+echo "Skipped: $(python3 -c "import json; print(len(json.load(open('results/skipped_contents.json'))))" 2>/dev/null || echo 0)"
+```
 
 ---
 
-# Pipeline Details
+### After Terminating a Pod (Pod Recreation)
 
-## Overview
+When you create a new pod with the **same Network Volume**, code and model weights are still on `/workspace`. Only the container environment (uv, venv, shell config) is lost.
 
-```
-Content Folder → Pre-filter → vLLM (Model) → JSON Summary → Comparison Report
-```
+```bash
+# 1. Pull latest code
+cd /workspace/interactive_summary_extraction
+git pull
 
-**Stage 1 — Pre-filter**: Reads all text-based files (.html, .js, .json, .asp, .xml, etc.).
-Strips SVG, CSS, comments, inline styles, and code lines.
-Keeps natural language text in any language.
+# 2. Re-run setup (re-installs uv + venv; model weights already cached)
+bash pipeline/setup_runpod.sh
+source ~/.bashrc
 
-**Stage 2 — LLM Synthesis**: Sends pre-filtered content to each model via vLLM HTTP API.
-Models run sequentially (one at a time).
-
-**Stage 3 — Comparison**: Terminal table (Rich) + HTML report with all model outputs side-by-side.
-
-### Universality
-
-The pre-filter is universal for all **text-based web content** — it targets web fundamentals (HTML/CSS/SVG) common to every engine, and detects natural language by multi-word phrase density + CJK characters (language-agnostic). The LLM handles remaining engine-specific noise without any per-engine code.
-
-**Known gaps** (require different Stage 1 input, Stages 2-3 unchanged):
-
-| Gap | % of Content | Why | Future Approach |
-|---|---|---|---|
-| Flash binary (SWF/FLA) | 58% | Text compiled in binary | Flash decompiler or Vision LLM |
-| Image-only content | Unknown | Text in images/diagrams | Vision LLM |
-| Audio-only content | Unknown | Narration without transcript | Speech-to-text (Whisper) |
-
-## Models
-
-| Model | Params (Active) | Context | Korean | License |
-|---|---|---|---|---|
-| EXAONE 4.0 32B | 32B | 128K | Best | Non-commercial |
-| Qwen3-32B | 32.8B | 32K (131K) | Good | Apache 2.0 |
-| Qwen3.5-35B-A3B | 35B (3B) | 256K | Good | Apache 2.0 |
-
-## CLI Options
-
-```
-uv run main.py --content-dir <path>    # Required: path to content folders
-               --output-dir <path>     # Default: ./results
-               --models <name> [name]  # Default: all three models
-               --num-gpus <N>          # Default: 1 (tensor parallelism for multi-GPU)
-               --skip-server           # Use existing vLLM server (don't start/stop)
+# 3. Run pipeline
+cd pipeline/pipeline_v2
+uv run main.py --content-dir ../../sample_contents --output-dir ./results
 ```
 
-## Output
+Setup is faster on pod recreation (~2 min) because model weights don't need re-downloading.
 
-- `results/<model-name>.json` — Per-model results (summary, tokens, latency)
-- `results/comparison.html` — Side-by-side HTML report
-
-## Project Structure
-
-```
-pipeline/
-├── main.py            # Orchestrator
-├── prefilter.py       # Universal content pre-filter
-├── synthesizer.py     # vLLM server management + HTTP client
-├── compare.py         # Terminal + HTML report generator
-├── config.py          # Model configs, prompt template
-├── setup_runpod.sh    # One-time RunPod setup
-├── pyproject.toml     # Python dependencies (uv)
-└── tests/             # 45 tests
-```
+---
 
 ## Running Tests
 
 ```bash
-cd pipeline
+cd pipeline/pipeline_v2
 uv sync --dev
 uv run pytest -v
 ```
+
+61 tests covering all stages, with mocked LLM calls.
+
+---
+
+## Project Structure
+
+```
+pipeline/pipeline_v2/
+├── main.py                  # CLI entry point + orchestrator
+├── config.py                # Model configs (dataclass-based)
+├── json_parser.py           # Lenient JSON parser for LLM responses
+├── llm_client.py            # vLLM HTTP client + ContextOverflowError
+├── server.py                # vLLM server start/stop/health
+├── stage1_discovery.py      # File discovery + encoding auto-detect
+├── stage1_ordering.py       # LLM-inferred reading order
+├── stage2_map.py            # Per-file summarization + chunking
+├── stage3_reduce.py         # Recursive merge + pairwise fallback
+├── stage4_output.py         # JSON output + skipped content log
+├── pyproject.toml           # Dependencies (uv)
+├── docs/
+│   ├── 2026-03-11-pipeline-v2-design.md   # Design specification
+│   └── 2026-03-11-pipeline-v2-plan.md     # Implementation plan
+└── tests/                   # 61 tests
+    ├── test_json_parser.py
+    ├── test_config.py
+    ├── test_llm_client.py
+    ├── test_stage1_discovery.py
+    ├── test_stage1_ordering.py
+    ├── test_stage2_map.py
+    ├── test_stage3_reduce.py
+    ├── test_stage4_output.py
+    ├── test_main.py
+    └── test_integration.py
+
+pipeline/
+└── setup_runpod.sh          # One-time RunPod setup script
+
+sample_contents/             # Sample educational content folders for testing
+```
+
+---
+
+## Known Limitations
+
+| Gap | Reason | Future Approach |
+|---|---|---|
+| Flash binary (SWF/FLA) | Text compiled in binary | Flash decompiler or Vision LLM |
+| Image-only content | Text baked into images | Vision LLM |
+| Audio-only content | Narration without transcript | Speech-to-text (Whisper) |
+
+These are logged to `skipped_contents.json` for future processing.

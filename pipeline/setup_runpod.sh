@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# setup_runpod.sh — One-time setup for RunPod H100 pod
-# Usage: bash setup_runpod.sh
+# setup_runpod.sh — One-time setup for RunPod GPU pod
+# Usage: cd pipeline/pipeline_v2 && bash ../setup_runpod.sh
 
 set -euo pipefail
 
-echo "=== Pipeline v5.0 RunPod Setup ==="
+echo "=== Pipeline v2 RunPod Setup ==="
 
 # 0. Fix for RunPod network filesystem (MFS) — hardlinks not supported
 export UV_LINK_MODE=copy
@@ -17,14 +17,14 @@ if [ -d /workspace ]; then
 fi
 
 # 0.2. Put venv on local disk to avoid MFS stale file handle errors
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-VENV_DIR="$SCRIPT_DIR/.venv"
-if mountpoint -q /workspace 2>/dev/null && [[ "$SCRIPT_DIR" == /workspace/* ]]; then
+PIPELINE_DIR="$(cd "$(dirname "$0")/pipeline_v2" && pwd)"
+VENV_DIR="$PIPELINE_DIR/.venv"
+if mountpoint -q /workspace 2>/dev/null && [[ "$PIPELINE_DIR" == /workspace/* ]]; then
     echo "Detected network volume — placing venv on local disk..."
     rm -rf "$VENV_DIR"
-    mkdir -p /tmp/pipeline-venv
-    ln -sf /tmp/pipeline-venv "$VENV_DIR"
-    echo "venv symlinked: $VENV_DIR → /tmp/pipeline-venv"
+    mkdir -p /tmp/pipeline-v2-venv
+    ln -sf /tmp/pipeline-v2-venv "$VENV_DIR"
+    echo "venv symlinked: $VENV_DIR → /tmp/pipeline-v2-venv"
 fi
 
 # 1. Install uv
@@ -32,7 +32,6 @@ if ! command -v uv &> /dev/null; then
     echo "Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.local/bin:$PATH"
-    # Persist PATH for future shell sessions
     if ! grep -q '.local/bin' ~/.bashrc 2>/dev/null; then
         echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
     fi
@@ -41,23 +40,23 @@ else
     echo "uv already installed: $(uv --version)"
 fi
 
-# Persist HF_HOME and UV_LINK_MODE for future shell sessions
+# Persist env vars for future shell sessions
 if ! grep -q 'HF_HOME' ~/.bashrc 2>/dev/null && [ -d /workspace ]; then
     echo 'export HF_HOME=/workspace/.cache/huggingface' >> ~/.bashrc
     echo 'export UV_LINK_MODE=copy' >> ~/.bashrc
 fi
 
-# 2. cd to pipeline directory
-cd "$(dirname "$0")"
+# 2. cd to pipeline_v2 directory
+cd "$PIPELINE_DIR"
 
-# 3. Install pipeline dependencies + vLLM in one step
+# 3. Install pipeline dependencies + vLLM
 echo "Installing pipeline dependencies..."
-uv sync
+uv sync --dev
 
 echo "Installing vLLM (nightly for Qwen3.5 support)..."
 uv pip install vllm --extra-index-url https://wheels.vllm.ai/nightly
 
-# 4. Verify everything (using uv run to ensure correct virtualenv)
+# 4. Verify installation
 echo ""
 echo "=== Verifying installation ==="
 
@@ -71,12 +70,14 @@ if torch.cuda.is_available():
 import vllm
 print(f'vLLM version: {vllm.__version__}')
 
-import httpx, rich, jinja2
-print('Pipeline deps: httpx, rich, jinja2 OK')
+import httpx, charset_normalizer
+print(f'httpx: {httpx.__version__}')
+print(f'charset-normalizer: {charset_normalizer.__version__}')
 "
 
 echo ""
 echo "=== Setup complete ==="
+echo ""
 echo "Run the pipeline:"
-echo "  cd $(pwd)"
-echo "  uv run main.py --content-dir ../sample_contents --output-dir ./results"
+echo "  cd $PIPELINE_DIR"
+echo "  uv run main.py --content-dir ../../sample_contents --output-dir ./results"
