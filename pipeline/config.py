@@ -73,4 +73,4 @@ VLLM_PORT = 8000
 VLLM_BASE_URL = f"http://localhost:{VLLM_PORT}"
 MAX_TOKENS = 512
 TEMPERATURE = 0
-MAX_CONTENT_CHARS = 200_000  # Safety truncation limit (~50K tokens)
+MAX_CONTENT_CHARS = 80_000  # Safety truncation limit for 32K token context (~2.5 chars/token for Korean)

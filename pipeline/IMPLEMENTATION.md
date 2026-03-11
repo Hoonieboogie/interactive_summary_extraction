@@ -95,7 +95,7 @@ The pre-filter approach is universal for all **text-based web content** because 
 - `ModelConfig` dataclass — name, model_id, vllm_args, description
 - `MODELS` — list of 3 model configs (EXAONE BF16, Qwen models FP8, max-model-len 32768)
 - `SYSTEM_PROMPT` — Korean 3-line summary extraction prompt
-- Constants: `VLLM_PORT=8000`, `MAX_TOKENS=512`, `TEMPERATURE=0`, `MAX_CONTENT_CHARS=200000`
+- Constants: `VLLM_PORT=8000`, `MAX_TOKENS=512`, `TEMPERATURE=0`, `MAX_CONTENT_CHARS=80000`
 
 ### `main.py`
 - `discover_contents()` — finds content subdirectories
