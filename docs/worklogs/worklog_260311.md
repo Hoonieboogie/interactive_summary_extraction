@@ -102,9 +102,56 @@ Executed all 13 tasks from the plan. **61 tests, all passing.**
 
 ---
 
+## Part 4: RunPod Deployment & Debugging
+
+### README Rewrite
+Rewrote `README.md` from scratch as a deployment guide covering:
+- Pod spec (A100 80GB SXM, 30GB container disk, 120GB network volume)
+- Step-by-step setup, run, and monitoring instructions
+- Dependency verification commands
+- Pod recreation workflow
+
+### Setup Script Updates
+Updated `pipeline/setup_runpod.sh` for v2:
+- Correct directory (`pipeline_v2` not `pipeline_v1`)
+- Stable vLLM (`uv pip install vllm`) — nightly was only needed for Qwen3.5-35B-A3B (MoE), not Qwen3.5-27B (dense)
+- Dependency verification step
+
+### Deployment Issues & Fixes
+
+| Issue | Root Cause | Fix |
+|---|---|---|
+| vLLM nightly install fails | Only aarch64 wheels on nightly index; Qwen3.5-27B (dense) doesn't need nightly | Use stable vLLM |
+| `server.py` subprocess can't find vLLM | Used bare `"python"` — system python has no vLLM | Changed to `sys.executable` to use uv venv python |
+| OOM at `max_model_len=262144` | KV cache pre-allocation consumed 72/80 GiB VRAM, leaving no room for inference | Lowered to `65536` |
+| A100 FP8 warning | A100 lacks native FP8 compute, uses Marlin kernel for weight-only decompression | Not an error, just info. Slightly slower than H100 |
+| **Context overflow not detected** | vLLM returns flat `{"message": "..."}` but client parsed nested `{"error": {"message": "..."}}` — error message never matched, `ContextOverflowError` never raised, chunking never triggered | Fixed to check both formats: `body.get("message", "") or body.get("error", {}).get("message", "")` |
+
+### Operational Notes
+- vLLM server takes 2-5 min to start (loading ~15 GB weights from network volume to GPU)
+- Keep vLLM server running between pipeline runs; use `--skip-server` flag
+- Start server manually in terminal 1, run pipeline with `--skip-server` in terminal 2
+- Throughput: ~48 tokens/s generation, ~1700-4700 tokens/s prompt processing
+
+### Commits
+
+| Commit | Description |
+|---|---|
+| `3861f38` | Rewrite README for pipeline v2, update setup script |
+| `4e4981e` | Use stable vLLM instead of nightly |
+| `20595cb` | Add dependency verification command to README |
+| `56e54ac` | Use `sys.executable` for vLLM subprocess, lower max-model-len to 65K |
+| `4481def` | Fix vLLM flat error format for context overflow detection |
+
+---
+
 ## Next Steps
 
 - [x] Execute implementation plan (13 tasks, TDD)
-- [x] Run full test suite (61/61 pass)
-- [ ] Deploy to RunPod (A100 80GB SXM) and test with sample contents
+- [x] Run full test suite (62/62 pass)
+- [x] Deploy to RunPod (A100 80GB SXM)
+- [x] Fix deployment issues (vLLM install, subprocess path, VRAM, error format)
+- [ ] Complete first successful pipeline run on sample content
 - [ ] Evaluate Qwen3.5-27B summary quality
+- [ ] Run on all 7 sample contents
+- [ ] Run on full 300K+ contents
