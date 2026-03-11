@@ -126,6 +126,7 @@ Updated `pipeline/setup_runpod.sh` for v2:
 | OOM at `max_model_len=262144` | KV cache pre-allocation consumed 72/80 GiB VRAM, leaving no room for inference | Lowered to `65536` |
 | A100 FP8 warning | A100 lacks native FP8 compute, uses Marlin kernel for weight-only decompression | Not an error, just info. Slightly slower than H100 |
 | **Context overflow not detected** | vLLM returns flat `{"message": "..."}` but client parsed nested `{"error": {"message": "..."}}` — error message never matched, `ContextOverflowError` never raised, chunking never triggered | Fixed to check both formats: `body.get("message", "") or body.get("error", {}).get("message", "")` |
+| **Chunking produces 1 chunk (no split)** | `INITIAL_CHUNK_SIZE = 500K` chars, but 65K tokens ≈ ~130-260K chars — files under 500K chars were never actually split on first attempt, causing 2 wasted 400 round-trips before halving kicked in | Derive from model config: `initial_chunk_size = max_model_len * 2` (~131K chars for 65K context) |
 
 ### Operational Notes
 - vLLM server takes 2-5 min to start (loading ~15 GB weights from network volume to GPU)
@@ -142,6 +143,7 @@ Updated `pipeline/setup_runpod.sh` for v2:
 | `20595cb` | Add dependency verification command to README |
 | `56e54ac` | Use `sys.executable` for vLLM subprocess, lower max-model-len to 65K |
 | `4481def` | Fix vLLM flat error format for context overflow detection |
+| `a985fad` | Derive initial chunk size from model context window |
 
 ---
 
