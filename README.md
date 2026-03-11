@@ -161,7 +161,7 @@ cat ./results/comparison.html
 watch -n 1 nvidia-smi
 
 # Disk usage — watch model weights download
-watch -n 5 'du -sh /root/.cache/huggingface/hub/ 2>/dev/null'
+watch -n 5 'du -sh /workspace/.cache/huggingface/hub/ 2>/dev/null'
 
 # venv size — watch during setup_runpod.sh install
 watch -n 2 'du -sh /workspace/interactive_summary_extraction/pipeline/.venv 2>/dev/null'
