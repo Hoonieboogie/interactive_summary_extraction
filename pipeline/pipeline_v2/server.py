@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import subprocess
+import sys
 import time
 
 import httpx
@@ -17,7 +18,7 @@ HEALTH_URL = f"http://localhost:{VLLM_PORT}/v1/models"
 
 def build_vllm_command(cfg: ModelConfig, num_gpus: int) -> list[str]:
     cmd = [
-        "python", "-m", "vllm.entrypoints.openai.api_server",
+        sys.executable, "-m", "vllm.entrypoints.openai.api_server",
         "--model", cfg.hf_id,
         "--max-model-len", str(cfg.max_model_len),
         "--host", VLLM_HOST,

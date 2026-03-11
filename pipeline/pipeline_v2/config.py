@@ -14,7 +14,7 @@ MODELS: dict[str, ModelConfig] = {
     "qwen3.5-27b": ModelConfig(
         name="qwen3.5-27b",
         hf_id="Qwen/Qwen3.5-27B-FP8",
-        max_model_len=262144,
+        max_model_len=65536,
         vllm_args=[],
     ),
 }
