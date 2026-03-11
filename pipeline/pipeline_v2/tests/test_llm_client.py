@@ -26,10 +26,28 @@ class TestLLMClient:
         assert result.completion_tokens == 20
 
     @pytest.mark.asyncio
-    async def test_context_overflow_raises(self, client):
+    async def test_context_overflow_raises_openai_format(self, client):
+        """OpenAI nested error format: {"error": {"message": "..."}}"""
         mock_response = httpx.Response(
             400,
             json={"error": {"message": "This model's maximum context length is 262144"}},
+            request=httpx.Request("POST", "http://localhost:8000/v1/chat/completions"),
+        )
+        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):
+            with pytest.raises(ContextOverflowError):
+                await client.call("system prompt", "user message")
+
+    @pytest.mark.asyncio
+    async def test_context_overflow_raises_vllm_format(self, client):
+        """vLLM flat error format: {"message": "...", "object": "error"}"""
+        mock_response = httpx.Response(
+            400,
+            json={
+                "object": "error",
+                "message": "You passed 65537 input tokens and requested 0 output tokens. However, the model's context length is only 65536 tokens",
+                "type": "BadRequestError",
+                "code": 400,
+            },
             request=httpx.Request("POST", "http://localhost:8000/v1/chat/completions"),
         )
         with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):

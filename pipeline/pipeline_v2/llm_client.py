@@ -36,8 +36,9 @@ class LLMClient:
 
         if response.status_code == 400:
             body = response.json()
-            msg = body.get("error", {}).get("message", "")
-            if "context length" in msg.lower() or "maximum" in msg.lower():
+            # vLLM uses flat format: {"message": "..."}, OpenAI uses nested: {"error": {"message": "..."}}
+            msg = body.get("message", "") or body.get("error", {}).get("message", "")
+            if "context length" in msg.lower() or "maximum" in msg.lower() or "input tokens" in msg.lower():
                 raise ContextOverflowError(msg)
             response.raise_for_status()
 
