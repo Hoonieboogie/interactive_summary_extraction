@@ -171,9 +171,21 @@ Strips SVG, CSS, comments, inline styles, and code lines.
 Keeps natural language text in any language.
 
 **Stage 2 — LLM Synthesis**: Sends pre-filtered content to each model via vLLM HTTP API.
-Models run sequentially (one at a time, FP8 quantization).
+Models run sequentially (one at a time).
 
 **Stage 3 — Comparison**: Terminal table (Rich) + HTML report with all model outputs side-by-side.
+
+### Universality
+
+The pre-filter is universal for all **text-based web content** — it targets web fundamentals (HTML/CSS/SVG) common to every engine, and detects natural language by multi-word phrase density + CJK characters (language-agnostic). The LLM handles remaining engine-specific noise without any per-engine code.
+
+**Known gaps** (require different Stage 1 input, Stages 2-3 unchanged):
+
+| Gap | % of Content | Why | Future Approach |
+|---|---|---|---|
+| Flash binary (SWF/FLA) | 58% | Text compiled in binary | Flash decompiler or Vision LLM |
+| Image-only content | Unknown | Text in images/diagrams | Vision LLM |
+| Audio-only content | Unknown | Narration without transcript | Speech-to-text (Whisper) |
 
 ## Models
 
