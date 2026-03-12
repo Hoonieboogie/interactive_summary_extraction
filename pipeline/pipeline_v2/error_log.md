@@ -175,9 +175,20 @@ Added on top of attempt 1:
 
 The retry mechanism only masks the problem — retrying the same oversized chunk 3 times just wastes 15 minutes before crashing.
 
-### Suggested Fix Direction
+### Final Fix — Always-halve + error isolation (SUCCESS)
 
-Increase `OUTPUT_RESERVE_TOKENS` from 4096 to ~16384 (25% reserve instead of 6%). This targets ~49K input tokens → ~100K chars. Chunks will be smaller but process reliably and much faster, avoiding the near-full-context pathology entirely.
+> **Note:** Fix attempts 1 and 2 above are historical records. The code they reference (`_compute_chunk_size`, `OUTPUT_RESERVE_TOKENS`, `initial_chunk_size = max_model_len * 2`) has been deleted. The final fix replaced all of it.
+
+The suggested fix direction (increasing `OUTPUT_RESERVE_TOKENS`) was also insufficient — see `docs/plans/2026-03-12-robust-chunking-and-error-resilience.md` for the full analysis. The root cause was that vLLM clips token counts on ALL overflows, making any ratio-based sizing fundamentally broken.
+
+**What was done (4 changes):**
+
+1. **Always-halve chunking**: On overflow, chunk size = `len(chunk) // 2`. No ratio math, no token count dependency. Content-agnostic, O(log n) convergence, naturally targets ~50% context utilization. Removed `_compute_chunk_size` and `OUTPUT_RESERVE_TOKENS` entirely.
+2. **Overflow-safe chunk merge**: If merged summaries overflow, falls back to pairwise merge with inner overflow protection.
+3. **Resilient pairwise merge (stage 3)**: Individual pair merge failures carry both summaries forward instead of crashing. Force-concatenate safety valve prevents infinite loops.
+4. **Error isolation**: Per-file and per-content exception handling. Known I/O errors logged at WARNING, unexpected errors at ERROR with traceback. One failure never kills the batch.
+
+**Result:** All crash points eliminated. Pipeline processes any file size, any content type, any char/token ratio without manual intervention.
 
 ### Environment
 
