@@ -8,7 +8,8 @@ SKIPPED_FILENAME = "skipped_contents.json"
 
 
 def save_result(
-    output_dir: Path, model_name: str, content_id: str, result: MergeResult
+    output_dir: Path, model_name: str, content_id: str, result: MergeResult,
+    llm_calls: int = 0,
 ) -> Path:
     """Save one JSON file per content at <output-dir>/<model>/<content_id>.json."""
     model_dir = Path(output_dir) / model_name
@@ -19,6 +20,7 @@ def save_result(
         "model": model_name,
         "summary": result.summary,
         "keywords": result.keywords,
+        "llm_calls": llm_calls,
     }
 
     output_path = model_dir / f"{content_id}.json"

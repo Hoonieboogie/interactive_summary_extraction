@@ -51,7 +51,8 @@ async def process_content(
         return None
 
     # Stage 1: Ordering
-    ordered_entries, ordering_response = await order_files(entries, llm)
+    ordered_entries, ordering_responses = await order_files(entries, llm)
+    llm_calls = len(ordering_responses)
 
     # Stage 2: Per-File Summarization (Map)
     # Conservative chunk size: max_model_len * 2 chars (~2 chars/token for mixed content)
@@ -62,18 +63,21 @@ async def process_content(
     for entry in ordered_entries:
         summary, responses = await summarize_file(entry, total_files, llm, initial_chunk_size)
         file_summaries.append(summary)
+        llm_calls += len(responses)
 
     # Stage 3: Recursive Merge (Reduce)
     merge_result, merge_responses = await merge_summaries(file_summaries, llm)
+    llm_calls += len(merge_responses)
 
     # Stage 4: Output
-    save_result(output_dir, model_name, content_id, merge_result)
-    logger.info(f"Done: {content_id}")
+    save_result(output_dir, model_name, content_id, merge_result, llm_calls)
+    logger.info(f"Done: {content_id} (LLM calls: {llm_calls})")
 
     return {
         "content_id": content_id,
         "summary": merge_result.summary,
         "keywords": merge_result.keywords,
+        "llm_calls": llm_calls,
     }
 
 

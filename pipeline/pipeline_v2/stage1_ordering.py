@@ -57,18 +57,21 @@ def order_files_fallback(entries: list[FileEntry]) -> list[OrderedFileEntry]:
     ]
 
 
-async def order_files(entries: list[FileEntry], llm_client) -> tuple[list[OrderedFileEntry], object]:
-    """Call LLM to determine reading order. Retry once, then fallback."""
+async def order_files(entries: list[FileEntry], llm_client) -> tuple[list[OrderedFileEntry], list]:
+    """Call LLM to determine reading order. Retry once, then fallback.
+    Returns (ordered_entries, list_of_LLMResponses)."""
     file_list = "\n".join(e.filepath for e in entries)
+    responses = []
 
     for attempt in range(2):
         try:
             response = await llm_client.call(ORDERING_SYSTEM_PROMPT, file_list)
+            responses.append(response)
             parsed = parse_json(response.text)
             if parsed and isinstance(parsed, dict) and "ordered_files" in parsed:
-                return validate_ordering(parsed["ordered_files"], entries), response
+                return validate_ordering(parsed["ordered_files"], entries), responses
         except Exception:
             logger.warning(f"Ordering attempt {attempt + 1} failed")
 
     logger.warning("Ordering unparseable after retry, using alphabetical fallback")
-    return order_files_fallback(entries), None
+    return order_files_fallback(entries), responses
