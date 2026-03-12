@@ -1,4 +1,5 @@
 import pytest
+import httpx
 from unittest.mock import AsyncMock
 from stage3_reduce import (
     merge_summaries,
@@ -68,6 +69,55 @@ class TestPairwiseTreeMerge:
         summaries = ["s1", "s2", "s3"]
         result, responses = await pairwise_tree_merge(summaries, llm)
         assert "final" in result.summary
+
+
+class TestPairwiseTreeMergeResilience:
+
+    @pytest.mark.asyncio
+    async def test_pair_overflow_carries_forward(self):
+        """If one pair overflows, carry both forward for finer-grained merging."""
+        call_count = 0
+
+        async def mock_call(system_prompt, user_message):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ContextOverflowError("overflow", actual_tokens=65537)
+            return LLMResponse(
+                text='{"summary": "merged", "keywords": ["k1"]}',
+                prompt_tokens=20, completion_tokens=10,
+            )
+
+        mock_llm = AsyncMock()
+        mock_llm.call.side_effect = mock_call
+
+        result, responses = await pairwise_tree_merge(
+            ["summary A", "summary B", "summary C"], mock_llm
+        )
+        assert result.summary == "merged"
+
+    @pytest.mark.asyncio
+    async def test_pair_timeout_carries_forward(self):
+        """If one pair times out, carry both forward."""
+        call_count = 0
+
+        async def mock_call(system_prompt, user_message):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise httpx.ReadTimeout("timeout")
+            return LLMResponse(
+                text='{"summary": "merged", "keywords": ["k1"]}',
+                prompt_tokens=20, completion_tokens=10,
+            )
+
+        mock_llm = AsyncMock()
+        mock_llm.call.side_effect = mock_call
+
+        result, responses = await pairwise_tree_merge(
+            ["summary A", "summary B", "summary C"], mock_llm
+        )
+        assert result.summary == "merged"
 
 
 class TestMergeSummaries:

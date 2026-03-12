@@ -1,5 +1,6 @@
 """Stage 3 — Recursive Merge (Reduce). Merges per-file summaries into final result."""
 import logging
+import httpx
 from dataclasses import dataclass, field
 
 from stage2_map import FileSummary
@@ -69,19 +70,36 @@ async def pairwise_tree_merge(
             if i + 1 < len(current):
                 # Merge pair
                 pair_text = f"Summary A:\n{current[i]}\n\nSummary B:\n{current[i+1]}"
-                for attempt in range(2):
-                    resp = await llm.call(INTERMEDIATE_MERGE_SYSTEM_PROMPT, pair_text)
-                    all_responses.append(resp)
-                    result = parse_merge_result(resp.text)
-                    if result.summary != resp.text or attempt == 1:
-                        break
-                all_keywords.extend(result.keywords)
-                next_level.append(result.summary)
+                try:
+                    for attempt in range(2):
+                        resp = await llm.call(INTERMEDIATE_MERGE_SYSTEM_PROMPT, pair_text)
+                        all_responses.append(resp)
+                        result = parse_merge_result(resp.text)
+                        if result.summary != resp.text or attempt == 1:
+                            break
+                    all_keywords.extend(result.keywords)
+                    next_level.append(result.summary)
+                except (ContextOverflowError, httpx.HTTPError, OSError):
+                    logger.warning(
+                        "Pair merge failed, carrying both summaries forward"
+                    )
+                    next_level.append(current[i])
+                    next_level.append(current[i + 1])
                 i += 2
             else:
                 # Odd one: carry forward
                 next_level.append(current[i])
                 i += 1
+        # Safety: if no progress (all pairs failed), force-concatenate adjacent pairs
+        if len(next_level) >= len(current):
+            logger.warning("No merge progress, force-concatenating pairs")
+            forced = []
+            for j in range(0, len(next_level), 2):
+                if j + 1 < len(next_level):
+                    forced.append(next_level[j] + "\n" + next_level[j + 1])
+                else:
+                    forced.append(next_level[j])
+            next_level = forced
         current = next_level
 
     # Final merge: condense to 3 lines + select best keywords
