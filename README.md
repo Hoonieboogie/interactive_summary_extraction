@@ -50,9 +50,11 @@ Binary-only content folders (Flash SWF, images only) are logged to `<output-dir>
 | **GPU** | 1x H100 80GB SXM | ~31 GB for model, ~43 GB for KV cache, native FP8 support |
 | **Container Disk** | 30 GB | OS + venv + code (rebuilt each pod) |
 | **Network Volume** | 120 GB | Model weights + repo (persists across pods) |
-| **Template** | PyTorch 2.x / CUDA 12.x | Standard RunPod template |
+| **Template** | PyTorch 2.x / CUDA 12.x | Standard RunPod template (setup script upgrades to CUDA 12.8) |
 
 > Network Volume mounts at `/workspace`. Model weights are cached at `/workspace/.cache/huggingface`. The venv is placed on local container disk (`/tmp/`) to avoid MFS filesystem issues.
+>
+> **CUDA 12.8+ required**: Qwen3.5 uses GDN (Gated Delta Network) attention, which requires flashinfer 0.6.4+, which in turn requires CUDA 12.8+ for PTX APIs. The setup script automatically upgrades from the pod's default CUDA 12.4 to 12.8.
 
 ---
 

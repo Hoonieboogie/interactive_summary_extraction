@@ -46,17 +46,33 @@ if ! grep -q 'HF_HOME' ~/.bashrc 2>/dev/null && [ -d /workspace ]; then
     echo 'export UV_LINK_MODE=copy' >> ~/.bashrc
 fi
 
-# 2. cd to pipeline_v2 directory
+# 2. Upgrade CUDA toolkit to 12.8+ (flashinfer 0.6.4 requires PTX APIs from CUDA 12.8+)
+NVCC_VERSION=$(nvcc --version 2>/dev/null | grep -oP 'release \K[0-9]+\.[0-9]+' || echo "0.0")
+NVCC_MAJOR=$(echo "$NVCC_VERSION" | cut -d. -f1)
+NVCC_MINOR=$(echo "$NVCC_VERSION" | cut -d. -f2)
+if [ "$NVCC_MAJOR" -lt 12 ] || { [ "$NVCC_MAJOR" -eq 12 ] && [ "$NVCC_MINOR" -lt 8 ]; }; then
+    echo "CUDA $NVCC_VERSION detected — upgrading to 12.8 for flashinfer compatibility..."
+    wget -q https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb
+    dpkg -i /tmp/cuda-keyring.deb
+    apt-get update -qq
+    apt-get install -y cuda-nvcc-12-8 cuda-cudart-dev-12-8 cuda-cccl-12-8
+    rm -rf /root/.cache/flashinfer 2>/dev/null  # clear stale JIT cache
+    echo "CUDA 12.8 toolkit installed"
+else
+    echo "CUDA $NVCC_VERSION — OK (>= 12.8)"
+fi
+
+# 3. cd to pipeline_v2 directory
 cd "$PIPELINE_DIR"
 
-# 3. Install pipeline dependencies + vLLM
+# 4. Install pipeline dependencies + vLLM
 echo "Installing pipeline dependencies..."
 uv sync --dev
 
 echo "Installing vLLM..."
 uv pip install vllm
 
-# 4. Verify installation
+# 5. Verify installation
 echo ""
 echo "=== Verifying installation ==="
 
