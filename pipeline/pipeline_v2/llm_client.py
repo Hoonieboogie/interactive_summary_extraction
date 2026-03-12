@@ -1,6 +1,7 @@
 """HTTP client for vLLM OpenAI-compatible API."""
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 
 import httpx
@@ -13,7 +14,9 @@ RETRY_BASE_DELAY = 5  # seconds
 
 class ContextOverflowError(Exception):
     """Raised when the prompt exceeds the model's context window."""
-    pass
+    def __init__(self, msg: str, actual_tokens: int | None = None):
+        super().__init__(msg)
+        self.actual_tokens = actual_tokens
 
 
 @dataclass
@@ -37,6 +40,26 @@ def _is_context_overflow(msg: str) -> bool:
     """Check if an error message indicates context length overflow."""
     lower = msg.lower()
     return any(kw in lower for kw in ("context length", "maximum", "input tokens", "prompt is too long"))
+
+
+def _parse_token_count(msg: str) -> int | None:
+    """Extract actual token count from overflow error message.
+
+    Matches patterns like:
+      - "your messages resulted in 89234 tokens"
+      - "input tokens: 89234"
+      - "89234 input_tokens"
+    """
+    patterns = [
+        r"resulted?\s+in\s+(\d+)\s+tokens",
+        r"(\d+)\s+input.?tokens",
+        r"input.?tokens\D*(\d+)",
+    ]
+    for pat in patterns:
+        m = re.search(pat, msg, re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+    return None
 
 
 class LLMClient:
@@ -64,7 +87,7 @@ class LLMClient:
             if response.status_code in (400, 500):
                 msg = _extract_error_message(response)
                 if _is_context_overflow(msg):
-                    raise ContextOverflowError(msg)
+                    raise ContextOverflowError(msg, actual_tokens=_parse_token_count(msg))
 
             # Non-retryable client errors
             if 400 <= response.status_code < 500:

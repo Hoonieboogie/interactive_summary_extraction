@@ -87,3 +87,66 @@ The recursive approach is fundamentally flawed. Instead:
 - vLLM 0.17.1, Qwen3.5-27B-FP8, max-model-len=65536
 - `initial_chunk_size` = 131,072 (= 65536 * 2)
 - RunPod H100 80GB, CUDA 12.8, flashinfer 0.6.4
+
+---
+
+## 2026-03-12 ~04:39 KST — httpx.ReadTimeout on Large Chunk Summarization
+
+### Status: FIX APPLIED, NOT YET TESTED
+
+### Symptom
+
+After the chunking infinite loop was fixed, the pipeline successfully chunked `data.js` and processed several chunks with 200 OK. However, it crashed with `httpx.ReadTimeout` while waiting for vLLM to respond to one of the 65K-char chunks:
+
+```
+04:39:27 INFO  HTTP Request: POST http://localhost:8000/v1/chat/completions "HTTP/1.1 400 Bad Request"
+04:39:27 WARNING Chunk overflow, halving to 65536 chars
+...
+httpx.ReadTimeout
+```
+
+The pipeline had processed ~15 LLM calls successfully before the timeout.
+
+### Root Cause Analysis
+
+The HTTP client timeout is 300 seconds (`llm_client.py` line 45):
+```python
+self._http = httpx.AsyncClient(base_url=base_url, timeout=300.0)
+```
+
+The fundamental problem is `initial_chunk_size = max_model_len * 2 = 131072` chars. After halving on overflow, chunks are ~65K chars, which tokenize to nearly the full 65536-token context window. This leaves almost no room for output generation, forcing vLLM to work at maximum context utilization where inference is slowest.
+
+A chunk that fills ~100% of the context window:
+- Requires maximum KV-cache allocation
+- Has maximum attention computation cost (quadratic in sequence length)
+- Leaves minimal output token budget
+
+This is not just a timeout issue — it's an inefficient use of the model's context. Simply increasing the timeout would mask the problem while wasting GPU time.
+
+### Affected Files
+
+- `pipeline/pipeline_v2/main.py` — `initial_chunk_size = max_model_len * 2` (line 59)
+- `pipeline/pipeline_v2/llm_client.py` — `timeout=300.0` (line 45)
+
+### Test Content That Triggers It
+
+- Content: `2018sah401_0301_0607`
+- File: `data.js` (~1.3MB+ minified JavaScript)
+
+### Fix Applied (not yet tested against live vLLM)
+
+Replaced static `initial_chunk_size = max_model_len * 2` with **dynamic chunk sizing** based on actual tokenization:
+
+1. `ContextOverflowError` now parses actual token count from vLLM/OpenAI error messages (e.g., "resulted in 89234 tokens")
+2. `_compute_chunk_size()` calculates real `chars_per_token = len(chunk) / actual_tokens` ratio
+3. Targets `max_model_len - OUTPUT_RESERVE_TOKENS` (65536 - 4096 = 61440) input tokens, reserving 4096 tokens for system prompt + model output (intermediate summaries can be lengthy)
+4. Adapts to any content type (Korean, English, minified JS) because it uses the model's own tokenization feedback
+5. Falls back to halving if token count unavailable in error message
+
+Removed static `initial_chunk_size` parameter — chunk size is now always computed dynamically from the first overflow error.
+
+### Environment
+
+- vLLM 0.17.1, Qwen3.5-27B-FP8, max-model-len=65536
+- httpx timeout = 300s
+- RunPod H100 80GB, CUDA 12.8, flashinfer 0.6.4

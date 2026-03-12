@@ -1,7 +1,7 @@
 import pytest
 import httpx
 from unittest.mock import AsyncMock, patch
-from llm_client import LLMClient, ContextOverflowError, LLMResponse
+from llm_client import LLMClient, ContextOverflowError, LLMResponse, _parse_token_count
 
 
 class TestLLMClient:
@@ -51,8 +51,33 @@ class TestLLMClient:
             request=httpx.Request("POST", "http://localhost:8000/v1/chat/completions"),
         )
         with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):
-            with pytest.raises(ContextOverflowError):
+            with pytest.raises(ContextOverflowError) as exc_info:
                 await client.call("system prompt", "user message")
+            assert exc_info.value.actual_tokens == 65537
+
+    @pytest.mark.asyncio
+    async def test_context_overflow_parses_openai_token_count(self, client):
+        """OpenAI format: 'resulted in 89234 tokens'"""
+        mock_response = httpx.Response(
+            400,
+            json={"error": {"message": "This model's maximum context length is 65536 tokens. However, your messages resulted in 89234 tokens."}},
+            request=httpx.Request("POST", "http://localhost:8000/v1/chat/completions"),
+        )
+        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):
+            with pytest.raises(ContextOverflowError) as exc_info:
+                await client.call("system prompt", "user message")
+            assert exc_info.value.actual_tokens == 89234
+
+
+class TestParseTokenCount:
+    def test_openai_format(self):
+        assert _parse_token_count("your messages resulted in 89234 tokens") == 89234
+
+    def test_vllm_format(self):
+        assert _parse_token_count("You passed 65537 input tokens") == 65537
+
+    def test_no_match(self):
+        assert _parse_token_count("some random error") is None
 
 
 class TestLLMResponse:

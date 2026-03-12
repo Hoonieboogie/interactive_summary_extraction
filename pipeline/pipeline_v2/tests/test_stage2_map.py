@@ -70,19 +70,29 @@ class TestSummarizeFile:
 
     @pytest.mark.asyncio
     async def test_context_overflow_triggers_chunking(self, mock_llm, sample_entry):
-        # Use content with newlines so split_into_chunks can split at boundaries
-        sample_entry.raw_content = "\n".join(f"line{i}" for i in range(100))
+        # Use content large enough to produce multiple chunks after dynamic sizing
+        sample_entry.raw_content = "\n".join(f"line{i:03d}" for i in range(1000))
 
-        # First call: overflow. Then chunk calls succeed. Then merge succeeds.
-        mock_llm.call.side_effect = [
-            ContextOverflowError("too long"),
-            LLMResponse(text="chunk1 summary", prompt_tokens=50, completion_tokens=10),
-            LLMResponse(text="chunk2 summary", prompt_tokens=50, completion_tokens=10),
-            LLMResponse(
-                text='{"has_educational_content": true, "summary": "merged"}',
-                prompt_tokens=30,
-                completion_tokens=10,
-            ),
-        ]
-        result, responses = await summarize_file(sample_entry, 5, mock_llm, initial_chunk_size=500)
+        # First call: overflow. Subsequent chunk calls succeed. Final merge succeeds.
+        chunk_resp = LLMResponse(text="chunk summary", prompt_tokens=50, completion_tokens=10)
+        merge_resp = LLMResponse(
+            text='{"has_educational_content": true, "summary": "merged"}',
+            prompt_tokens=30,
+            completion_tokens=10,
+        )
+
+        call_count = 0
+        async def mock_call(system_prompt, user_message):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ContextOverflowError("resulted in 200 tokens", actual_tokens=200)
+            # Last call is the merge (uses CHUNK_MERGE_SYSTEM_PROMPT which contains JSON format)
+            if "JSON" in system_prompt:
+                return merge_resp
+            return chunk_resp
+
+        mock_llm.call.side_effect = mock_call
+        result, responses = await summarize_file(sample_entry, 5, mock_llm, max_model_len=100)
         assert result.summary == "merged"
+        assert call_count > 2  # At least: 1 overflow + 1 chunk + 1 merge

@@ -73,3 +73,17 @@ Created `pipeline/setup_claude.sh` — separate from pipeline deps:
 ## LLM Call Count Tracking
 
 Added `llm_calls` field to the per-content output JSON. Accumulates all LLM calls across ordering, per-file summarization, and merge stages.
+
+---
+
+## httpx.ReadTimeout on Large Chunks (FIX APPLIED, NOT YET TESTED)
+
+**Problem**: After chunking fix, pipeline crashed with `httpx.ReadTimeout` on ~65K-char chunks. `initial_chunk_size = max_model_len * 2 = 131072` chars meant that after halving on overflow, chunks were ~65K chars — nearly filling the entire 65536-token context window. This left almost no room for output tokens, making vLLM inference extremely slow (>300s).
+
+**Root cause**: Static `initial_chunk_size` assumed fixed char-to-token ratio, but this varies widely (English ~4 chars/token, Korean ~2-3, minified JS ~3-4).
+
+**Fix**: Dynamic chunk sizing based on actual tokenization from the model:
+1. `ContextOverflowError` now parses actual token count from vLLM error messages (`llm_client.py`)
+2. New `_compute_chunk_size()` calculates real `chars_per_token` ratio from the overflow, targets `max_model_len - 4096` input tokens — reserves 4096 tokens for system prompt + model output (intermediate summaries can be lengthy) (`stage2_map.py`)
+3. Removed static `initial_chunk_size` parameter — chunk size always computed dynamically
+4. Falls back to halving if token count unavailable in error message

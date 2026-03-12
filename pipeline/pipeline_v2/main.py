@@ -55,13 +55,10 @@ async def process_content(
     llm_calls = len(ordering_responses)
 
     # Stage 2: Per-File Summarization (Map)
-    # Conservative chunk size: max_model_len * 2 chars (~2 chars/token for mixed content)
-    # Ensures first split produces multiple chunks for overflowing files
-    initial_chunk_size = max_model_len * 2
     total_files = len(ordered_entries)
     file_summaries = []
     for entry in ordered_entries:
-        summary, responses = await summarize_file(entry, total_files, llm, initial_chunk_size)
+        summary, responses = await summarize_file(entry, total_files, llm, max_model_len)
         file_summaries.append(summary)
         llm_calls += len(responses)
 

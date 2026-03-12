@@ -24,8 +24,6 @@ CHUNK_MERGE_SYSTEM_PROMPT = """Combine these chunk summaries into a single coher
 반드시 다음 JSON 형식으로 응답하세요:
 {"has_educational_content": true/false, "summary": "통합 요약"}"""
 
-INITIAL_CHUNK_SIZE = 500_000  # Overridden by max_model_len when available
-
 
 @dataclass
 class FileSummary:
@@ -98,12 +96,30 @@ def _build_user_message(entry: OrderedFileEntry, total_files: int) -> str:
 
 
 MIN_CHUNK_SIZE = 10_000  # Floor to prevent infinite splitting
+OUTPUT_RESERVE_TOKENS = 4096  # Reserved for system prompt + model output (summaries can be lengthy)
+
+
+def _compute_chunk_size(chunk: str, actual_tokens: int | None, max_model_len: int) -> int:
+    """Compute optimal chunk size based on actual tokenization ratio.
+
+    If actual_tokens is available (from the overflow error), use it to calculate
+    the real chars-per-token ratio for this content. Otherwise, fall back to halving.
+
+    Reserves OUTPUT_RESERVE_TOKENS for the system prompt and model output,
+    using the rest of the context window for input.
+    """
+    if actual_tokens and actual_tokens > 0:
+        chars_per_token = len(chunk) / actual_tokens
+        target_tokens = max_model_len - OUTPUT_RESERVE_TOKENS
+        return int(target_tokens * chars_per_token)
+    # Fallback: halve
+    return len(chunk) // 2
 
 
 async def _summarize_chunks(
-    chunks: list[str], llm: LLMClient
+    chunks: list[str], llm: LLMClient, max_model_len: int = 65536,
 ) -> tuple[list[str], list[LLMResponse]]:
-    """Summarize each chunk individually. Iteratively halve on overflow. Returns plain text summaries."""
+    """Summarize each chunk individually. Dynamically resize on overflow. Returns plain text summaries."""
     summaries = []
     responses = []
 
@@ -116,15 +132,20 @@ async def _summarize_chunks(
             resp = await llm.call(CHUNK_SYSTEM_PROMPT, chunk)
             summaries.append(resp.text)
             responses.append(resp)
-        except ContextOverflowError:
-            chunk_size = len(chunk) // 2
+        except ContextOverflowError as e:
+            chunk_size = _compute_chunk_size(chunk, e.actual_tokens, max_model_len)
             if chunk_size < MIN_CHUNK_SIZE:
+                chunk_size = MIN_CHUNK_SIZE
+            if len(chunk) <= MIN_CHUNK_SIZE:
                 logger.error(
                     f"Chunk still overflows at minimum size ({len(chunk)} chars), skipping"
                 )
                 summaries.append("[Content too large to summarize]")
                 continue
-            logger.warning(f"Chunk overflow, halving to {chunk_size} chars")
+            logger.warning(
+                f"Chunk overflow ({e.actual_tokens} tokens for {len(chunk)} chars), "
+                f"resizing to {chunk_size} chars"
+            )
             sub_chunks = split_into_chunks(chunk, chunk_size)
             # Prepend sub-chunks so they're processed next (preserves order)
             pending = sub_chunks + pending
@@ -136,13 +157,14 @@ async def summarize_file(
     entry: OrderedFileEntry,
     total_files: int,
     llm: LLMClient,
-    initial_chunk_size: int = INITIAL_CHUNK_SIZE,
+    max_model_len: int = 65536,
 ) -> tuple[FileSummary, list[LLMResponse]]:
     """Summarize a single file. Self-correcting: chunk on overflow."""
     user_msg = _build_user_message(entry, total_files)
     all_responses = []
 
     # Try sending entire file
+    initial_chunk_size = None
     try:
         resp = await llm.call(PERFILE_SYSTEM_PROMPT, user_msg)
         all_responses.append(resp)
@@ -160,12 +182,20 @@ async def summarize_file(
         result.position = entry.position
         return result, all_responses
 
-    except ContextOverflowError:
+    except ContextOverflowError as e:
         logger.info(f"File {entry.filepath} overflows context, chunking...")
+        # Use actual token count to compute optimal initial chunk size
+        initial_chunk_size = _compute_chunk_size(
+            entry.raw_content, e.actual_tokens, max_model_len
+        )
+        if initial_chunk_size < MIN_CHUNK_SIZE:
+            initial_chunk_size = MIN_CHUNK_SIZE
 
     # Chunk and summarize
     chunks = split_into_chunks(entry.raw_content, initial_chunk_size)
-    chunk_summaries, chunk_responses = await _summarize_chunks(chunks, llm)
+    chunk_summaries, chunk_responses = await _summarize_chunks(
+        chunks, llm, max_model_len
+    )
     all_responses.extend(chunk_responses)
 
     # Merge chunk summaries
