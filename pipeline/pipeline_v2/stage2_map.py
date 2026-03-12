@@ -96,45 +96,17 @@ def _build_user_message(entry: OrderedFileEntry, total_files: int) -> str:
 
 
 MIN_CHUNK_SIZE = 10_000  # Floor to prevent infinite splitting
-OUTPUT_RESERVE_TOKENS = 4096  # Reserved for system prompt + model output (summaries can be lengthy)
-
-
-def _compute_chunk_size(chunk: str, actual_tokens: int | None, max_model_len: int) -> int:
-    """Compute optimal chunk size based on actual tokenization ratio.
-
-    If actual_tokens reliably reflects the true token count, use it to calculate
-    the real chars-per-token ratio. Otherwise, fall back to halving.
-
-    vLLM clips reported token counts to max_model_len+1 when the input far exceeds
-    the limit. We detect this: if reported tokens are very close to max_model_len
-    but the chunk is much larger than expected (>2x max_model_len chars), the count
-    is clipped and unreliable.
-    """
-    if actual_tokens and actual_tokens > 0:
-        chars_per_token = len(chunk) / actual_tokens
-        # Sanity check: if chars_per_token > 4, the token count is likely clipped
-        # (most content is 1-4 chars/token; >4 means vLLM didn't count the real tokens)
-        if chars_per_token <= 4:
-            target_tokens = max_model_len - OUTPUT_RESERVE_TOKENS
-            return int(target_tokens * chars_per_token)
-        logger.info(
-            f"Token count likely clipped ({actual_tokens} tokens for {len(chunk)} chars, "
-            f"ratio {chars_per_token:.1f}), falling back to halving"
-        )
-    # Fallback: halve
-    return len(chunk) // 2
 
 
 async def _summarize_chunks(
-    chunks: list[str], llm: LLMClient, max_model_len: int = 65536,
+    chunks: list[str], llm: LLMClient,
 ) -> tuple[list[str], list[LLMResponse], int]:
-    """Summarize each chunk individually. Dynamically resize on overflow.
+    """Summarize each chunk individually. Halve on overflow.
     Returns (plain text summaries, responses, overflow_retries)."""
     summaries = []
     responses = []
     overflow_retries = 0
 
-    # Use a work queue instead of recursion: list of chunks still to summarize
     pending = list(chunks)
 
     while pending:
@@ -143,9 +115,9 @@ async def _summarize_chunks(
             resp = await llm.call(CHUNK_SYSTEM_PROMPT, chunk)
             summaries.append(resp.text)
             responses.append(resp)
-        except ContextOverflowError as e:
+        except ContextOverflowError:
             overflow_retries += 1
-            chunk_size = _compute_chunk_size(chunk, e.actual_tokens, max_model_len)
+            chunk_size = len(chunk) // 2
             if chunk_size < MIN_CHUNK_SIZE:
                 chunk_size = MIN_CHUNK_SIZE
             if len(chunk) <= MIN_CHUNK_SIZE:
@@ -155,11 +127,9 @@ async def _summarize_chunks(
                 summaries.append("[Content too large to summarize]")
                 continue
             logger.warning(
-                f"Chunk overflow ({e.actual_tokens} tokens for {len(chunk)} chars), "
-                f"resizing to {chunk_size} chars"
+                f"Chunk overflow ({len(chunk)} chars), halving to {chunk_size} chars"
             )
             sub_chunks = split_into_chunks(chunk, chunk_size)
-            # Prepend sub-chunks so they're processed next (preserves order)
             pending = sub_chunks + pending
 
     return summaries, responses, overflow_retries
@@ -196,20 +166,17 @@ async def summarize_file(
         result.position = entry.position
         return result, all_responses, 0
 
-    except ContextOverflowError as e:
+    except ContextOverflowError:
         overflow_retries += 1
         logger.info(f"File {entry.filepath} overflows context, chunking...")
-        # Use actual token count to compute optimal initial chunk size
-        initial_chunk_size = _compute_chunk_size(
-            entry.raw_content, e.actual_tokens, max_model_len
-        )
+        initial_chunk_size = len(entry.raw_content) // 2
         if initial_chunk_size < MIN_CHUNK_SIZE:
             initial_chunk_size = MIN_CHUNK_SIZE
 
     # Chunk and summarize
     chunks = split_into_chunks(entry.raw_content, initial_chunk_size)
     chunk_summaries, chunk_responses, chunk_overflows = await _summarize_chunks(
-        chunks, llm, max_model_len
+        chunks, llm
     )
     overflow_retries += chunk_overflows
     all_responses.extend(chunk_responses)
