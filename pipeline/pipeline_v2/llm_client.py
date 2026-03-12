@@ -71,17 +71,31 @@ class LLMClient:
         last_exc = None
 
         for attempt in range(1, MAX_RETRIES + 1):
-            response = await self._http.post(
-                "/v1/chat/completions",
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message},
-                    ],
-                    "temperature": 0.0,
-                },
-            )
+            try:
+                response = await self._http.post(
+                    "/v1/chat/completions",
+                    json={
+                        "model": self.model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message},
+                        ],
+                        "temperature": 0.0,
+                    },
+                )
+            except httpx.ReadTimeout:
+                logger.warning(
+                    f"Read timeout (attempt {attempt}/{MAX_RETRIES})"
+                )
+                last_exc = httpx.ReadTimeout(
+                    f"Read timeout after {self._http.timeout.read}s"
+                )
+                if attempt < MAX_RETRIES:
+                    delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                    logger.info(f"Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                raise last_exc
 
             # Handle context overflow (400 or 500)
             if response.status_code in (400, 500):

@@ -102,16 +102,25 @@ OUTPUT_RESERVE_TOKENS = 4096  # Reserved for system prompt + model output (summa
 def _compute_chunk_size(chunk: str, actual_tokens: int | None, max_model_len: int) -> int:
     """Compute optimal chunk size based on actual tokenization ratio.
 
-    If actual_tokens is available (from the overflow error), use it to calculate
-    the real chars-per-token ratio for this content. Otherwise, fall back to halving.
+    If actual_tokens reliably reflects the true token count, use it to calculate
+    the real chars-per-token ratio. Otherwise, fall back to halving.
 
-    Reserves OUTPUT_RESERVE_TOKENS for the system prompt and model output,
-    using the rest of the context window for input.
+    vLLM clips reported token counts to max_model_len+1 when the input far exceeds
+    the limit. We detect this: if reported tokens are very close to max_model_len
+    but the chunk is much larger than expected (>2x max_model_len chars), the count
+    is clipped and unreliable.
     """
     if actual_tokens and actual_tokens > 0:
         chars_per_token = len(chunk) / actual_tokens
-        target_tokens = max_model_len - OUTPUT_RESERVE_TOKENS
-        return int(target_tokens * chars_per_token)
+        # Sanity check: if chars_per_token > 4, the token count is likely clipped
+        # (most content is 1-4 chars/token; >4 means vLLM didn't count the real tokens)
+        if chars_per_token <= 4:
+            target_tokens = max_model_len - OUTPUT_RESERVE_TOKENS
+            return int(target_tokens * chars_per_token)
+        logger.info(
+            f"Token count likely clipped ({actual_tokens} tokens for {len(chunk)} chars, "
+            f"ratio {chars_per_token:.1f}), falling back to halving"
+        )
     # Fallback: halve
     return len(chunk) // 2
 

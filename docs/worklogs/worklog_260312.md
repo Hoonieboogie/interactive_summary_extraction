@@ -76,14 +76,16 @@ Added `llm_calls` field to the per-content output JSON. Accumulates all LLM call
 
 ---
 
-## httpx.ReadTimeout on Large Chunks (FIX APPLIED, NOT YET TESTED)
+## httpx.ReadTimeout on Large Chunks (TESTING)
 
 **Problem**: After chunking fix, pipeline crashed with `httpx.ReadTimeout` on ~65K-char chunks. `initial_chunk_size = max_model_len * 2 = 131072` chars meant that after halving on overflow, chunks were ~65K chars — nearly filling the entire 65536-token context window. This left almost no room for output tokens, making vLLM inference extremely slow (>300s).
 
 **Root cause**: Static `initial_chunk_size` assumed fixed char-to-token ratio, but this varies widely (English ~4 chars/token, Korean ~2-3, minified JS ~3-4).
 
-**Fix**: Dynamic chunk sizing based on actual tokenization from the model:
-1. `ContextOverflowError` now parses actual token count from vLLM error messages (`llm_client.py`)
-2. New `_compute_chunk_size()` calculates real `chars_per_token` ratio from the overflow, targets `max_model_len - 4096` input tokens — reserves 4096 tokens for system prompt + model output (intermediate summaries can be lengthy) (`stage2_map.py`)
-3. Removed static `initial_chunk_size` parameter — chunk size always computed dynamically
-4. Falls back to halving if token count unavailable in error message
+**Fix attempt 1 — Dynamic chunk sizing (FAILED)**: Parsed actual token count from vLLM overflow errors to compute real `chars_per_token` ratio. However, vLLM clips reported tokens to `max_model_len + 1` (always `65537`) regardless of actual input, making the ratio wrong. Chunks only shrank by ~6% per retry (30+ retries to converge). Still timed out.
+
+**Fix attempt 2 — Clipped token detection + ReadTimeout retry (TESTING)**:
+1. Detect clipped token counts: if `chars_per_token > 4`, fall back to halving (fast convergence in ~4 steps)
+2. Added `httpx.ReadTimeout` retry (3 attempts, exponential backoff) in `llm_client.py`
+3. Removed static `initial_chunk_size` — chunk size computed dynamically from overflow errors
+4. Reserves 4096 tokens for system prompt + model output (intermediate summaries can be lengthy)

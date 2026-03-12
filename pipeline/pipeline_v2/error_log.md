@@ -133,17 +133,30 @@ This is not just a timeout issue — it's an inefficient use of the model's cont
 - Content: `2018sah401_0301_0607`
 - File: `data.js` (~1.3MB+ minified JavaScript)
 
-### Fix Applied (not yet tested against live vLLM)
+### Fix Attempt 1 — Dynamic chunk sizing (FAILED)
 
-Replaced static `initial_chunk_size = max_model_len * 2` with **dynamic chunk sizing** based on actual tokenization:
+Replaced static `initial_chunk_size = max_model_len * 2` with dynamic chunk sizing based on actual tokenization:
 
-1. `ContextOverflowError` now parses actual token count from vLLM/OpenAI error messages (e.g., "resulted in 89234 tokens")
-2. `_compute_chunk_size()` calculates real `chars_per_token = len(chunk) / actual_tokens` ratio
-3. Targets `max_model_len - OUTPUT_RESERVE_TOKENS` (65536 - 4096 = 61440) input tokens, reserving 4096 tokens for system prompt + model output (intermediate summaries can be lengthy)
-4. Adapts to any content type (Korean, English, minified JS) because it uses the model's own tokenization feedback
-5. Falls back to halving if token count unavailable in error message
+1. `ContextOverflowError` now parses actual token count from vLLM/OpenAI error messages
+2. `_compute_chunk_size()` calculates real `chars_per_token` ratio, targets `max_model_len - 4096` input tokens
+3. Falls back to halving if token count unavailable
 
-Removed static `initial_chunk_size` parameter — chunk size is now always computed dynamically from the first overflow error.
+**Result:** Still crashed with `httpx.ReadTimeout`.
+
+**Why it failed:** vLLM clips reported token count to `max_model_len + 1` (always `65537`) regardless of actual input size. This made the ratio calculation wrong:
+- 1.28M chars / 65537 tokens = 19.66 chars/token (real ratio is ~1-2 for minified JS)
+- Each resize only shrank by ~6%, taking 30+ overflow retries to converge from 1.28M → 143K chars
+- At 143K chars chunks started succeeding (~30-60s each), processed 25+ chunks OK
+- Then one chunk still timed out at 300s
+
+### Fix Attempt 2 — Clipped token detection + ReadTimeout retry (TESTING)
+
+Added on top of attempt 1:
+
+1. **Clipped token detection**: if `chars_per_token > 4`, the reported token count is clipped/unreliable → fall back to halving. This makes large files converge in ~4 halves instead of 30+ ratio-based resizes.
+2. **ReadTimeout retry** in `llm_client.py`: retries up to 3 times with exponential backoff on `httpx.ReadTimeout`, instead of crashing immediately.
+
+Currently running against `2018sah401_0301_0607` — result pending.
 
 ### Environment
 
