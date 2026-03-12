@@ -108,6 +108,42 @@ class TestSummarizeFile:
         assert result.summary == "final merged"
 
     @pytest.mark.asyncio
+    async def test_chunk_merge_force_concatenates_when_all_pairs_fail(self, mock_llm, sample_entry):
+        """If all pairwise merges fail, force-concatenate to guarantee convergence."""
+        sample_entry.raw_content = "a" * 20_000 + "\n" + "b" * 20_000
+
+        merge_call_count = 0
+
+        async def mock_call(system_prompt, user_message):
+            nonlocal merge_call_count
+            # Whole-file attempt: overflow
+            if "분석" in system_prompt:
+                raise ContextOverflowError("overflow", actual_tokens=65537)
+            # Chunk summarization: succeed
+            if "Summarize" in system_prompt:
+                return LLMResponse(text="chunk summary", prompt_tokens=50, completion_tokens=50)
+            # Merge calls: first 3 overflow (initial + all pairwise), then succeed
+            if "통합" in system_prompt:
+                merge_call_count += 1
+                if merge_call_count <= 3:
+                    raise ContextOverflowError("overflow", actual_tokens=65537)
+                return LLMResponse(
+                    text='{"has_educational_content": true, "summary": "force merged"}',
+                    prompt_tokens=30, completion_tokens=10,
+                )
+            return LLMResponse(
+                text='{"has_educational_content": true, "summary": "fallback"}',
+                prompt_tokens=30, completion_tokens=10,
+            )
+
+        mock_llm.call.side_effect = mock_call
+        result, responses, retries = await summarize_file(sample_entry, 5, mock_llm)
+        # Should not crash — force-concatenation reduces to 1 item and exits loop
+        # Result is the raw concatenated text (not JSON), so fallback is used
+        assert "chunk summary" in result.summary
+        assert result.has_educational_content is True  # fallback default
+
+    @pytest.mark.asyncio
     async def test_context_overflow_triggers_chunking(self, mock_llm, sample_entry):
         # Use content large enough to produce multiple chunks after dynamic sizing
         sample_entry.raw_content = "\n".join(f"line{i:03d}" for i in range(1000))
