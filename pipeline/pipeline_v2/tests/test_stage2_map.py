@@ -132,7 +132,7 @@ class TestSummarizeFile:
             return chunk_resp
 
         mock_llm.call.side_effect = mock_call
-        result, responses, overflow_retries = await summarize_file(sample_entry, 5, mock_llm, max_model_len=100)
+        result, responses, overflow_retries = await summarize_file(sample_entry, 5, mock_llm)
         assert result.summary == "merged"
         assert call_count > 2  # At least: 1 overflow + 1 chunk + 1 merge
         assert overflow_retries >= 1

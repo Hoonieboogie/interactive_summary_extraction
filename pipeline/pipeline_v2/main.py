@@ -31,7 +31,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 async def process_content(
     content_dir: Path, output_dir: Path, model_name: str, llm: LLMClient,
-    max_model_len: int = 65536,
 ) -> dict | None:
     """Process a single content folder through all stages. Returns None if skipped."""
     content_id = content_dir.name
@@ -65,7 +64,7 @@ async def process_content(
     total_overflow_retries = 0
     for entry in ordered_entries:
         summary, responses, overflow_retries = await summarize_file(
-            entry, total_files, llm, max_model_len
+            entry, total_files, llm
         )
         file_summaries.append(summary)
         all_responses.extend(responses)
@@ -145,7 +144,7 @@ async def run(args: argparse.Namespace) -> None:
             if not folder.is_dir():
                 logger.warning(f"Not a directory: {folder}")
                 continue
-            await process_content(folder, args.output_dir, args.model, llm, model_cfg.max_model_len)
+            await process_content(folder, args.output_dir, args.model, llm)
 
         await llm.close()
 

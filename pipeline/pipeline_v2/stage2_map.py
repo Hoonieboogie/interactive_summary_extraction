@@ -1,5 +1,6 @@
 """Stage 2 — Per-File Summarization (Map). Each file -> LLM -> summary."""
 import logging
+from collections import deque
 from dataclasses import dataclass
 
 from stage1_ordering import OrderedFileEntry
@@ -107,10 +108,10 @@ async def _summarize_chunks(
     responses = []
     overflow_retries = 0
 
-    pending = list(chunks)
+    pending = deque(chunks)
 
     while pending:
-        chunk = pending.pop(0)
+        chunk = pending.popleft()
         try:
             resp = await llm.call(CHUNK_SYSTEM_PROMPT, chunk)
             summaries.append(resp.text)
@@ -130,7 +131,7 @@ async def _summarize_chunks(
                 f"Chunk overflow ({len(chunk)} chars), halving to {chunk_size} chars"
             )
             sub_chunks = split_into_chunks(chunk, chunk_size)
-            pending = sub_chunks + pending
+            pending.extendleft(reversed(sub_chunks))
 
     return summaries, responses, overflow_retries
 
@@ -139,7 +140,6 @@ async def summarize_file(
     entry: OrderedFileEntry,
     total_files: int,
     llm: LLMClient,
-    max_model_len: int = 65536,
 ) -> tuple[FileSummary, list[LLMResponse], int]:
     """Summarize a single file. Self-correcting: chunk on overflow.
     Returns (summary, responses, overflow_retries)."""
