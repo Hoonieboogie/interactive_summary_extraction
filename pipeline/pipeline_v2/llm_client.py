@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import re
+import time
 from dataclasses import dataclass
 
 import httpx
@@ -24,6 +25,7 @@ class LLMResponse:
     text: str
     prompt_tokens: int
     completion_tokens: int
+    duration_seconds: float = 0.0
 
 
 def _extract_error_message(response: httpx.Response) -> str:
@@ -71,6 +73,7 @@ class LLMClient:
         last_exc = None
 
         for attempt in range(1, MAX_RETRIES + 1):
+            t0 = time.monotonic()
             try:
                 response = await self._http.post(
                     "/v1/chat/completions",
@@ -126,11 +129,13 @@ class LLMClient:
                 raise last_exc
 
             # Success
+            elapsed = time.monotonic() - t0
             data = response.json()
             return LLMResponse(
                 text=data["choices"][0]["message"]["content"],
                 prompt_tokens=data["usage"]["prompt_tokens"],
                 completion_tokens=data["usage"]["completion_tokens"],
+                duration_seconds=round(elapsed, 2),
             )
 
         raise last_exc  # Should not reach here, but safety net

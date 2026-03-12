@@ -148,6 +148,7 @@ If all files return `has_educational_content: false`:
 - Save one JSON file per content: `<output-dir>/<model>/<content_id>.json`
 - Each file contains the per-content result (see Output Format below)
 - The pipeline runs with a single model per invocation, selected via `--model`
+- Performance metrics are collected during pipeline execution and included in the output
 
 ---
 
@@ -159,11 +160,43 @@ If all files return `has_educational_content: false`:
   "content_id": "2018sah401_0301_0607",
   "model": "qwen3.5-27b",
   "summary": "첫째 줄. 둘째 줄. 셋째 줄",
-  "keywords": ["키워드1", "키워드2", ...]
+  "keywords": ["키워드1", "키워드2", ...],
+  "llm_calls": 14,
+  "metrics": {
+    "wall_clock_seconds": {
+      "total": 842.5,
+      "ordering": 161.9,
+      "map": 612.3,
+      "reduce": 68.3
+    },
+    "overflow_retries": 6,
+    "latency_stats": {
+      "total": 780.1,
+      "avg": 55.7,
+      "max": 213.4,
+      "min": 10.8
+    }
+  }
 }
 ```
 
 `content_id` is the folder name under `--content-dir` (e.g., `sample_contents/2018sah401_0301_0607/` → `"2018sah401_0301_0607"`).
+
+### Metrics
+
+All metrics are content-agnostic — they measure pipeline/LLM behavior regardless of input structure.
+
+| Field | Description |
+|---|---|
+| `wall_clock_seconds.total` | End-to-end processing time for this content |
+| `wall_clock_seconds.ordering` | Time spent in Stage 1 ordering |
+| `wall_clock_seconds.map` | Time spent in Stage 2 per-file summarization |
+| `wall_clock_seconds.reduce` | Time spent in Stage 3 merge |
+| `overflow_retries` | Number of `ContextOverflowError` retries across all stages (measures chunk sizing efficiency) |
+| `latency_stats.total` | Sum of all LLM call durations (excludes non-LLM overhead) |
+| `latency_stats.avg` | Average LLM call duration |
+| `latency_stats.max` | Slowest single LLM call |
+| `latency_stats.min` | Fastest single LLM call |
 
 ---
 

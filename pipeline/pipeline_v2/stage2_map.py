@@ -127,10 +127,12 @@ def _compute_chunk_size(chunk: str, actual_tokens: int | None, max_model_len: in
 
 async def _summarize_chunks(
     chunks: list[str], llm: LLMClient, max_model_len: int = 65536,
-) -> tuple[list[str], list[LLMResponse]]:
-    """Summarize each chunk individually. Dynamically resize on overflow. Returns plain text summaries."""
+) -> tuple[list[str], list[LLMResponse], int]:
+    """Summarize each chunk individually. Dynamically resize on overflow.
+    Returns (plain text summaries, responses, overflow_retries)."""
     summaries = []
     responses = []
+    overflow_retries = 0
 
     # Use a work queue instead of recursion: list of chunks still to summarize
     pending = list(chunks)
@@ -142,6 +144,7 @@ async def _summarize_chunks(
             summaries.append(resp.text)
             responses.append(resp)
         except ContextOverflowError as e:
+            overflow_retries += 1
             chunk_size = _compute_chunk_size(chunk, e.actual_tokens, max_model_len)
             if chunk_size < MIN_CHUNK_SIZE:
                 chunk_size = MIN_CHUNK_SIZE
@@ -159,7 +162,7 @@ async def _summarize_chunks(
             # Prepend sub-chunks so they're processed next (preserves order)
             pending = sub_chunks + pending
 
-    return summaries, responses
+    return summaries, responses, overflow_retries
 
 
 async def summarize_file(
@@ -167,10 +170,12 @@ async def summarize_file(
     total_files: int,
     llm: LLMClient,
     max_model_len: int = 65536,
-) -> tuple[FileSummary, list[LLMResponse]]:
-    """Summarize a single file. Self-correcting: chunk on overflow."""
+) -> tuple[FileSummary, list[LLMResponse], int]:
+    """Summarize a single file. Self-correcting: chunk on overflow.
+    Returns (summary, responses, overflow_retries)."""
     user_msg = _build_user_message(entry, total_files)
     all_responses = []
+    overflow_retries = 0
 
     # Try sending entire file
     initial_chunk_size = None
@@ -189,9 +194,10 @@ async def summarize_file(
 
         result.filepath = entry.filepath
         result.position = entry.position
-        return result, all_responses
+        return result, all_responses, 0
 
     except ContextOverflowError as e:
+        overflow_retries += 1
         logger.info(f"File {entry.filepath} overflows context, chunking...")
         # Use actual token count to compute optimal initial chunk size
         initial_chunk_size = _compute_chunk_size(
@@ -202,9 +208,10 @@ async def summarize_file(
 
     # Chunk and summarize
     chunks = split_into_chunks(entry.raw_content, initial_chunk_size)
-    chunk_summaries, chunk_responses = await _summarize_chunks(
+    chunk_summaries, chunk_responses, chunk_overflows = await _summarize_chunks(
         chunks, llm, max_model_len
     )
+    overflow_retries += chunk_overflows
     all_responses.extend(chunk_responses)
 
     # Merge chunk summaries
@@ -215,4 +222,4 @@ async def summarize_file(
     result = parse_file_summary(merge_resp.text)
     result.filepath = entry.filepath
     result.position = entry.position
-    return result, all_responses
+    return result, all_responses, overflow_retries

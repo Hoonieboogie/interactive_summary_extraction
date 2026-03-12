@@ -21,6 +21,7 @@ class TestSaveResult:
             "model": "qwen3.5-27b",
             "summary": "줄1. 줄2. 줄3",
             "keywords": ["수학", "분수"],
+            "llm_calls": 0,
         }
 
 

@@ -64,9 +64,10 @@ class TestSummarizeFile:
             prompt_tokens=100,
             completion_tokens=20,
         )
-        result, responses = await summarize_file(sample_entry, 5, mock_llm)
+        result, responses, overflow_retries = await summarize_file(sample_entry, 5, mock_llm)
         assert result.summary == "교육 요약"
         assert result.has_educational_content is True
+        assert overflow_retries == 0
 
     @pytest.mark.asyncio
     async def test_context_overflow_triggers_chunking(self, mock_llm, sample_entry):
@@ -93,6 +94,7 @@ class TestSummarizeFile:
             return chunk_resp
 
         mock_llm.call.side_effect = mock_call
-        result, responses = await summarize_file(sample_entry, 5, mock_llm, max_model_len=100)
+        result, responses, overflow_retries = await summarize_file(sample_entry, 5, mock_llm, max_model_len=100)
         assert result.summary == "merged"
         assert call_count > 2  # At least: 1 overflow + 1 chunk + 1 merge
+        assert overflow_retries >= 1

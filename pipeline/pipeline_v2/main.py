@@ -36,6 +36,7 @@ async def process_content(
     """Process a single content folder through all stages. Returns None if skipped."""
     content_id = content_dir.name
     logger.info(f"Processing: {content_id}")
+    t_total = time.monotonic()
 
     # Stage 1: File Discovery
     entries = discover_files(content_dir)
@@ -51,30 +52,66 @@ async def process_content(
         return None
 
     # Stage 1: Ordering
+    t_ordering = time.monotonic()
     ordered_entries, ordering_responses = await order_files(entries, llm)
+    wall_ordering = round(time.monotonic() - t_ordering, 2)
+    all_responses = list(ordering_responses)
     llm_calls = len(ordering_responses)
 
     # Stage 2: Per-File Summarization (Map)
+    t_map = time.monotonic()
     total_files = len(ordered_entries)
     file_summaries = []
+    total_overflow_retries = 0
     for entry in ordered_entries:
-        summary, responses = await summarize_file(entry, total_files, llm, max_model_len)
+        summary, responses, overflow_retries = await summarize_file(
+            entry, total_files, llm, max_model_len
+        )
         file_summaries.append(summary)
+        all_responses.extend(responses)
         llm_calls += len(responses)
+        total_overflow_retries += overflow_retries
+    wall_map = round(time.monotonic() - t_map, 2)
 
     # Stage 3: Recursive Merge (Reduce)
+    t_reduce = time.monotonic()
     merge_result, merge_responses = await merge_summaries(file_summaries, llm)
+    wall_reduce = round(time.monotonic() - t_reduce, 2)
+    all_responses.extend(merge_responses)
     llm_calls += len(merge_responses)
 
+    wall_total = round(time.monotonic() - t_total, 2)
+
+    # Compute latency stats from all LLM responses
+    durations = [r.duration_seconds for r in all_responses]
+    latency_stats = {
+        "total": round(sum(durations), 2),
+        "avg": round(sum(durations) / len(durations), 2) if durations else 0,
+        "max": round(max(durations), 2) if durations else 0,
+        "min": round(min(durations), 2) if durations else 0,
+    }
+
+    metrics = {
+        "wall_clock_seconds": {
+            "total": wall_total,
+            "ordering": wall_ordering,
+            "map": wall_map,
+            "reduce": wall_reduce,
+        },
+        "overflow_retries": total_overflow_retries,
+        "latency_stats": latency_stats,
+    }
+
     # Stage 4: Output
-    save_result(output_dir, model_name, content_id, merge_result, llm_calls)
-    logger.info(f"Done: {content_id} (LLM calls: {llm_calls})")
+    save_result(output_dir, model_name, content_id, merge_result, llm_calls, metrics)
+    logger.info(f"Done: {content_id} (LLM calls: {llm_calls}, wall: {wall_total}s)")
 
     return {
         "content_id": content_id,
         "summary": merge_result.summary,
         "keywords": merge_result.keywords,
         "llm_calls": llm_calls,
+        "metrics": metrics,
     }
 
 

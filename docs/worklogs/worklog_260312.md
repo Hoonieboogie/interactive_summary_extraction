@@ -89,3 +89,22 @@ Added `llm_calls` field to the per-content output JSON. Accumulates all LLM call
 2. Added `httpx.ReadTimeout` retry (3 attempts, exponential backoff) in `llm_client.py`
 3. Removed static `initial_chunk_size` — chunk size computed dynamically from overflow errors
 4. Reserves 4096 tokens for system prompt + model output (intermediate summaries can be lengthy)
+
+---
+
+## Pipeline Performance Metrics
+
+Added content-agnostic performance metrics to the pipeline output JSON. These measure pipeline/LLM behavior regardless of input content structure or file formats.
+
+**Three metric groups (all fixed-size output, no per-call bloat):**
+
+1. **`wall_clock_seconds`** — `{total, ordering, map, reduce}`: end-to-end and per-stage wall-clock timing via `time.monotonic()`
+2. **`overflow_retries`** — single int: count of `ContextOverflowError` retries across all stages (measures chunk sizing efficiency)
+3. **`latency_stats`** — `{total, avg, max, min}`: aggregated LLM call durations
+
+**Changes:**
+- `llm_client.py`: added `duration_seconds` field to `LLMResponse`, timed around each HTTP call
+- `stage2_map.py`: `_summarize_chunks` and `summarize_file` now return `overflow_retries` count as third element
+- `main.py`: times each stage, aggregates latency stats from all `LLMResponse` durations, passes `metrics` dict to output
+- `stage4_output.py`: `save_result` accepts optional `metrics` dict, includes in output JSON
+- `docs/2026-03-11-pipeline-v2-design.md`: updated Output Format section with metrics schema and descriptions
