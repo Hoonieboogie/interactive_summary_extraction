@@ -92,9 +92,11 @@ The recursive approach is fundamentally flawed. Instead:
 
 ## 2026-03-12 ~04:39 KST — httpx.ReadTimeout on Large Chunk Summarization
 
-### Status: FIXED (2026-03-12)
+### Status: FIX APPLIED, NOT YET TESTED ON REAL CONTENT
 
-**Resolution:** Comprehensive overhaul replacing ratio-based chunking with always-halve + error isolation. See `docs/plans/2026-03-12-robust-chunking-and-error-resilience.md` for full plan. Commits: `02a52f2`, `b7ad5e0`, `c77f27a`, `c1220d2`, `61a41ac`.
+**What was done:** Comprehensive overhaul replacing ratio-based chunking with always-halve + error isolation. Unit tests pass (75 tests). See `docs/plans/2026-03-12-robust-chunking-and-error-resilience.md` for full plan. Commits: `02a52f2`, `b7ad5e0`, `c77f27a`, `c1220d2`, `61a41ac`.
+
+**Needs:** Run pipeline against `2018sah401_0301_0607` (the content that triggered this issue) on the GPU server to confirm the fix works end-to-end.
 
 ### Symptom
 

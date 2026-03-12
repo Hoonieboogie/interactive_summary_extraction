@@ -76,7 +76,7 @@ Added `llm_calls` field to the per-content output JSON. Accumulates all LLM call
 
 ---
 
-## httpx.ReadTimeout on Large Chunks (FIXED)
+## httpx.ReadTimeout on Large Chunks (FIX APPLIED, PENDING REAL TEST)
 
 **Problem**: After chunking fix, pipeline crashed with `httpx.ReadTimeout` on ~65K-char chunks. `initial_chunk_size = max_model_len * 2 = 131072` chars meant that after halving on overflow, chunks were ~65K chars — nearly filling the entire 65536-token context window. This left almost no room for output tokens, making vLLM inference extremely slow (>300s).
 
