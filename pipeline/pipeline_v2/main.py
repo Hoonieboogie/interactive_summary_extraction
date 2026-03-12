@@ -6,8 +6,10 @@ import os
 import time
 from pathlib import Path
 
+import httpx
+
 from config import get_model_config, DEFAULT_MODEL
-from llm_client import LLMClient
+from llm_client import LLMClient, ContextOverflowError
 from server import start_server, stop_server, wait_for_server, VLLM_PORT
 from stage1_discovery import discover_files
 from stage1_ordering import order_files, order_files_fallback
@@ -63,14 +65,28 @@ async def process_content(
     file_summaries = []
     total_overflow_retries = 0
     for entry in ordered_entries:
-        summary, responses, overflow_retries = await summarize_file(
-            entry, total_files, llm
-        )
-        file_summaries.append(summary)
-        all_responses.extend(responses)
-        llm_calls += len(responses)
-        total_overflow_retries += overflow_retries
+        try:
+            summary, responses, overflow_retries = await summarize_file(
+                entry, total_files, llm
+            )
+            file_summaries.append(summary)
+            all_responses.extend(responses)
+            llm_calls += len(responses)
+            total_overflow_retries += overflow_retries
+        except (httpx.HTTPError, ContextOverflowError, OSError) as e:
+            logger.warning(f"File {entry.filepath} failed ({type(e).__name__}), skipping")
+            continue
+        except Exception:
+            logger.error(
+                f"Unexpected error summarizing {entry.filepath}, skipping",
+                exc_info=True,
+            )
+            continue
     wall_map = round(time.monotonic() - t_map, 2)
+
+    if not file_summaries:
+        logger.error(f"All files failed for {content_id}, skipping content")
+        return None
 
     # Stage 3: Recursive Merge (Reduce)
     t_reduce = time.monotonic()
@@ -144,7 +160,14 @@ async def run(args: argparse.Namespace) -> None:
             if not folder.is_dir():
                 logger.warning(f"Not a directory: {folder}")
                 continue
-            await process_content(folder, args.output_dir, args.model, llm)
+            try:
+                await process_content(folder, args.output_dir, args.model, llm)
+            except (httpx.HTTPError, ContextOverflowError, OSError) as e:
+                logger.warning(f"Content {folder.name} failed ({type(e).__name__}), skipping")
+                continue
+            except Exception:
+                logger.error(f"Unexpected error processing {folder.name}, skipping", exc_info=True)
+                continue
 
         await llm.close()
 
