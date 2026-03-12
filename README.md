@@ -109,9 +109,19 @@ If CUDA is `False` or any import fails, re-run `bash pipeline/setup_runpod.sh &&
 
 ---
 
+### Install tmux
+
+RunPod pods don't include tmux by default. Install it to run the server and pipeline in separate terminals:
+
+```bash
+apt update && apt install -y tmux
+```
+
+---
+
 ### Running the Pipeline
 
-Use two terminals: one for the vLLM server, one for the pipeline.
+Use two terminals (e.g., tmux panes): one for the vLLM server, one for the pipeline.
 
 **Terminal 1 — Start vLLM server:**
 
