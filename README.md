@@ -110,11 +110,7 @@ Use two terminals: one for the vLLM server, one for the pipeline.
 **Terminal 1 — Start vLLM server:**
 
 ```bash
-cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2
-uv run python -m vllm.entrypoints.openai.api_server \
-    --model Qwen/Qwen3.5-27B-FP8 \
-    --max-model-len 65536 \
-    --host 0.0.0.0 --port 8000
+cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-27B-FP8 --max-model-len 65536 --host 0.0.0.0 --port 8000
 ```
 
 Wait for `Application startup complete` (2-5 min). Keep this terminal open.
@@ -122,14 +118,11 @@ Wait for `Application startup complete` (2-5 min). Keep this terminal open.
 **Terminal 2 — Run pipeline:**
 
 ```bash
-cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2
-
 # All content folders
-uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server
+cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server
 
 # Specific folders only
-uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server \
-    --content-ids 2018sah401_0301_0607 2026_kuk_501_0202_0203
+cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server --content-ids 2018sah401_0301_0607 2026_kuk_501_0202_0203
 ```
 
 > `--skip-server` tells the pipeline to use the already-running server. Keep the server running between pipeline runs to avoid the 2-5 min startup each time.
