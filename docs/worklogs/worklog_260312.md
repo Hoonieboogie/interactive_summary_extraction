@@ -76,19 +76,19 @@ Added `llm_calls` field to the per-content output JSON. Accumulates all LLM call
 
 ---
 
-## httpx.ReadTimeout on Large Chunks (TESTING)
+## httpx.ReadTimeout on Large Chunks (FIXED)
 
 **Problem**: After chunking fix, pipeline crashed with `httpx.ReadTimeout` on ~65K-char chunks. `initial_chunk_size = max_model_len * 2 = 131072` chars meant that after halving on overflow, chunks were ~65K chars — nearly filling the entire 65536-token context window. This left almost no room for output tokens, making vLLM inference extremely slow (>300s).
 
-**Root cause**: Static `initial_chunk_size` assumed fixed char-to-token ratio, but this varies widely (English ~4 chars/token, Korean ~2-3, minified JS ~3-4).
+**Root cause**: vLLM clips reported token counts to `max_model_len + 1` (always 65537) on ALL overflows, making any ratio-based chunk sizing unreliable. Two previous fix attempts (dynamic ratio, clipped detection) both failed because the ratio was always wrong.
 
-**Fix attempt 1 — Dynamic chunk sizing (FAILED)**: Parsed actual token count from vLLM overflow errors to compute real `chars_per_token` ratio. However, vLLM clips reported tokens to `max_model_len + 1` (always `65537`) regardless of actual input, making the ratio wrong. Chunks only shrank by ~6% per retry (30+ retries to converge). Still timed out.
+**Fix — Comprehensive overhaul (4 commits)**:
+See `pipeline/pipeline_v2/docs/plans/2026-03-12-robust-chunking-and-error-resilience.md` for full plan.
 
-**Fix attempt 2 — Clipped token detection + ReadTimeout retry (TESTING)**:
-1. Detect clipped token counts: if `chars_per_token > 4`, fall back to halving (fast convergence in ~4 steps)
-2. Added `httpx.ReadTimeout` retry (3 attempts, exponential backoff) in `llm_client.py`
-3. Removed static `initial_chunk_size` — chunk size computed dynamically from overflow errors
-4. Reserves 4096 tokens for system prompt + model output (intermediate summaries can be lengthy)
+1. **Always-halve chunking** (`02a52f2`): Removed broken `_compute_chunk_size` and `OUTPUT_RESERVE_TOKENS`. Chunks always halve on overflow — content-agnostic, O(log n) convergence, naturally targets ~50% context utilization. Used `collections.deque` for O(1) popleft.
+2. **Overflow-safe chunk merge** (`b7ad5e0`): Added pairwise fallback when chunk summaries overflow on merge. Inner pairs also catch overflow.
+3. **Resilient pairwise merge** (`c77f27a`): Stage 3 `pairwise_tree_merge` now catches ContextOverflow/HTTPError/OSError on individual pairs, carries failed pairs forward. Force-concatenate safety valve prevents infinite loops.
+4. **Error isolation** (`c1220d2`): Per-file and per-content exception handling with two-tier logging (known I/O errors at WARNING, unexpected errors at ERROR with traceback). One bad file/content never crashes the batch.
 
 ---
 
