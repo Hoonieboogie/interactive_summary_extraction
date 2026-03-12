@@ -22,7 +22,7 @@ Context overflow is self-correcting: files too large for the context window are 
 |---|---|---|---|---|
 | Qwen3.5-27B | `Qwen/Qwen3.5-27B-FP8` | 262K tokens | ~31 GB | Apache 2.0 |
 
-> On A100 80GB, `max-model-len` is set to 65536 (not 262K) to leave room for KV cache and inference. Files exceeding this limit are automatically chunked.
+> On H100 80GB, `max-model-len` is set to 65536 (not 262K) to leave room for KV cache and inference. Files exceeding this limit are automatically chunked.
 
 ### Output
 
@@ -47,7 +47,7 @@ Binary-only content folders (Flash SWF, images only) are logged to `<output-dir>
 
 | Setting | Value | Notes |
 |---|---|---|
-| **GPU** | 1x A100 80GB SXM | ~31 GB for model, ~43 GB for KV cache |
+| **GPU** | 1x H100 80GB SXM | ~31 GB for model, ~43 GB for KV cache, native FP8 support |
 | **Container Disk** | 30 GB | OS + venv + code (rebuilt each pod) |
 | **Network Volume** | 120 GB | Model weights + repo (persists across pods) |
 | **Template** | PyTorch 2.x / CUDA 12.x | Standard RunPod template |
