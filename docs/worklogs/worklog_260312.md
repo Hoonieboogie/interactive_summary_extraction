@@ -39,6 +39,25 @@ namespace "cuda::ptx" has no member "n32_t"
 
 ---
 
-## Chunking Infinite Loop (TODO)
+## Claude Code Setup Script
 
-**Problem**: `_summarize_chunks` in `stage2_map.py` enters infinite recursion on large files (`data.js`). The halving always logs `687424` — the sub-chunk size is not actually decreasing across recursive calls. Needs investigation and fix.
+Created `pipeline/setup_claude.sh` — separate from pipeline deps:
+- Installs Claude Code via npm
+- Persists SSH key to `/workspace/.ssh/` (network volume) and restores on pod recreation
+- Sets git identity and switches remote to SSH
+
+---
+
+## README Overhaul
+
+- Rewrote all setup/run instructions as single-line copy-paste commands
+- Separated first-time setup vs pod recreation flows with clear steps
+- Updated project structure to include new files
+
+---
+
+## Chunking Infinite Loop (OPEN BUG)
+
+**Problem**: `_summarize_chunks` in `stage2_map.py` enters infinite recursion on large files (`data.js` in content `2018sah401_0301_0607`). The chunk size never converges — each recursion level halves once then recurses, resetting `chunk_size = len(chunk)` at the top. Logged `687424` indefinitely.
+
+**Details**: See `pipeline/pipeline_v2/error_log.md` for full analysis and suggested fix direction.

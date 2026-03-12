@@ -60,49 +60,52 @@ Binary-only content folders (Flash SWF, images only) are logged to `<output-dir>
 
 ### First-Time Setup (New Network Volume)
 
+**Step 1 — Clone repo:**
 ```bash
-# 1. Clone repo (GitLab blocks cloud IPs, use GitHub)
-cd /workspace
-git clone https://github.com/Hoonieboogie/interactive_summary_extraction.git
-cd interactive_summary_extraction
-
-# 2. Install dependencies (~5 min, model weights download on first run ~15 min)
-bash pipeline/setup_runpod.sh
-source ~/.bashrc
+cd /workspace && git clone https://github.com/Hoonieboogie/interactive_summary_extraction.git && cd interactive_summary_extraction
 ```
+
+**Step 2 — Install pipeline dependencies + CUDA 12.8 (~5 min, model weights download on first run ~15 min):**
+```bash
+bash pipeline/setup_runpod.sh && source ~/.bashrc
+```
+
+**Step 3 — Install Claude Code + SSH key + git config:**
+```bash
+bash pipeline/setup_claude.sh
+```
+
+> On first run, this generates a new SSH key. Add the printed public key to GitHub → Settings → SSH Keys.
+
+---
 
 ### Pod Recreation (Existing Network Volume)
 
 Code and model weights persist on `/workspace`. Only the container environment (uv, venv, shell config) is lost.
 
+**Step 1 — Pull latest code and install dependencies:**
 ```bash
-cd /workspace/interactive_summary_extraction
-git pull
-bash pipeline/setup_runpod.sh    # ~2 min (pipeline deps + CUDA 12.8)
-bash pipeline/setup_claude.sh    # Claude Code + SSH key restore + git config
-source ~/.bashrc
+cd /workspace/interactive_summary_extraction && git pull && bash pipeline/setup_runpod.sh && source ~/.bashrc
 ```
+
+**Step 2 — Install Claude Code + restore SSH key:**
+```bash
+bash pipeline/setup_claude.sh
+```
+
+> SSH key is automatically restored from network volume. No need to add a new key to GitHub.
+
+---
 
 ### Verify Installation
 
-The setup script runs this automatically, but you can re-check anytime:
+The setup script runs this automatically. Re-check anytime:
 
 ```bash
-cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2
-uv run python -c "
-import torch
-print(f'CUDA: {torch.cuda.is_available()}')
-print(f'GPU:  {torch.cuda.get_device_name(0)}')
-print(f'VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB')
-
-import vllm; print(f'vLLM: {vllm.__version__}')
-import httpx; print(f'httpx: {httpx.__version__}')
-import charset_normalizer; print(f'charset-normalizer: {charset_normalizer.__version__}')
-print('All dependencies OK')
-"
+cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}'); print(f'GPU: {torch.cuda.get_device_name(0)}'); print(f'VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB'); import vllm; print(f'vLLM: {vllm.__version__}'); print('OK')"
 ```
 
-If CUDA is `False` or any import fails, re-run `bash pipeline/setup_runpod.sh`.
+If CUDA is `False` or any import fails, re-run `bash pipeline/setup_runpod.sh && source ~/.bashrc`.
 
 ---
 
@@ -116,19 +119,21 @@ Use two terminals: one for the vLLM server, one for the pipeline.
 cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-27B-FP8 --max-model-len 65536 --host 0.0.0.0 --port 8000
 ```
 
-Wait for `Application startup complete` (2-5 min). Keep this terminal open.
+Wait for `Application startup complete` (~1-3 min). Keep this terminal open.
 
 **Terminal 2 — Run pipeline:**
 
 ```bash
 # All content folders
 cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server
+```
 
+```bash
 # Specific folders only
 cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run main.py --content-dir ../../sample_contents --output-dir ./results --skip-server --content-ids 2018sah401_0301_0607 2026_kuk_501_0202_0203
 ```
 
-> `--skip-server` tells the pipeline to use the already-running server. Keep the server running between pipeline runs to avoid the 2-5 min startup each time.
+> `--skip-server` tells the pipeline to use the already-running server. Keep the server running between pipeline runs to avoid the startup time.
 
 #### CLI Reference
 
@@ -145,16 +150,29 @@ uv run main.py --content-dir <path>           # Required: root of content folder
 
 ### Monitoring
 
-#### GPU and vLLM
-
+**Check GPU and server status:**
 ```bash
-watch -n 1 nvidia-smi                          # GPU memory & utilization
-curl -s http://localhost:8000/v1/models         # Check if server is ready
+nvidia-smi
 ```
 
-#### Pipeline logs
+```bash
+curl -s http://localhost:8000/v1/models
+```
 
-The pipeline logs to stderr with timestamps:
+**Check results:**
+```bash
+ls results/qwen3.5-27b/
+```
+
+```bash
+cat results/qwen3.5-27b/<content_id>.json | python3 -m json.tool
+```
+
+```bash
+cat results/skipped_contents.json 2>/dev/null | python3 -m json.tool
+```
+
+**Pipeline logs** (stderr with timestamps):
 
 ```
 INFO  Processing: <content_id>          # Starting a content folder
@@ -164,30 +182,12 @@ INFO  File <path> overflows context...  # Chunking triggered (self-correcting)
 INFO  Done: <content_id>               # Content folder complete
 ```
 
-#### Results
-
-```bash
-# Watch results appear
-ls results/qwen3.5-27b/
-
-# Read a result
-cat results/qwen3.5-27b/<content_id>.json | python3 -m json.tool
-
-# Check skipped (binary-only) contents
-cat results/skipped_contents.json 2>/dev/null | python3 -m json.tool
-
-# Count: processed vs skipped
-echo "Processed: $(ls results/qwen3.5-27b/*.json 2>/dev/null | wc -l)"
-```
-
 ---
 
 ## Running Tests
 
 ```bash
-cd pipeline/pipeline_v2
-uv sync --dev
-uv run pytest -v
+cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv sync --dev && uv run pytest -v
 ```
 
 62 tests covering all stages, with mocked LLM calls.
@@ -225,7 +225,8 @@ pipeline/pipeline_v2/
     └── test_integration.py
 
 pipeline/
-└── setup_runpod.sh          # RunPod setup script
+├── setup_runpod.sh          # RunPod setup script (pipeline deps + CUDA 12.8)
+└── setup_claude.sh          # Claude Code + SSH key + git config
 
 sample_contents/             # Sample educational content folders for testing
 ```
