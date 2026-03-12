@@ -2,7 +2,7 @@
 
 ## 2026-03-12 ~01:43 KST — Chunking Infinite Loop in `_summarize_chunks`
 
-### Status: OPEN (not fixed)
+### Status: FIXED (2026-03-12)
 
 ### Symptom
 

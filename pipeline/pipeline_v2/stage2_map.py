@@ -83,31 +83,37 @@ def _build_user_message(entry: OrderedFileEntry, total_files: int) -> str:
 {entry.raw_content}"""
 
 
+MIN_CHUNK_SIZE = 10_000  # Floor to prevent infinite splitting
+
+
 async def _summarize_chunks(
     chunks: list[str], llm: LLMClient
 ) -> tuple[list[str], list[LLMResponse]]:
-    """Summarize each chunk individually. Halve on overflow. Returns plain text summaries."""
+    """Summarize each chunk individually. Iteratively halve on overflow. Returns plain text summaries."""
     summaries = []
     responses = []
 
-    for chunk in chunks:
-        chunk_size = len(chunk)
-        text = chunk
-        while True:
-            try:
-                resp = await llm.call(CHUNK_SYSTEM_PROMPT, text)
-                summaries.append(resp.text)
-                responses.append(resp)
-                break
-            except ContextOverflowError:
-                chunk_size //= 2
-                logger.warning(f"Chunk overflow, halving to {chunk_size} chars")
-                sub_chunks = split_into_chunks(text, chunk_size)
-                # Recursively summarize sub-chunks
-                sub_summaries, sub_responses = await _summarize_chunks(sub_chunks, llm)
-                summaries.append("\n".join(sub_summaries))
-                responses.extend(sub_responses)
-                break
+    # Use a work queue instead of recursion: list of chunks still to summarize
+    pending = list(chunks)
+
+    while pending:
+        chunk = pending.pop(0)
+        try:
+            resp = await llm.call(CHUNK_SYSTEM_PROMPT, chunk)
+            summaries.append(resp.text)
+            responses.append(resp)
+        except ContextOverflowError:
+            chunk_size = len(chunk) // 2
+            if chunk_size < MIN_CHUNK_SIZE:
+                logger.error(
+                    f"Chunk still overflows at minimum size ({len(chunk)} chars), skipping"
+                )
+                summaries.append("[Content too large to summarize]")
+                continue
+            logger.warning(f"Chunk overflow, halving to {chunk_size} chars")
+            sub_chunks = split_into_chunks(chunk, chunk_size)
+            # Prepend sub-chunks so they're processed next (preserves order)
+            pending = sub_chunks + pending
 
     return summaries, responses
 
