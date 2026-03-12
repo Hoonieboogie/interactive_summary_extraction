@@ -149,14 +149,33 @@ Replaced static `initial_chunk_size = max_model_len * 2` with dynamic chunk sizi
 - At 143K chars chunks started succeeding (~30-60s each), processed 25+ chunks OK
 - Then one chunk still timed out at 300s
 
-### Fix Attempt 2 — Clipped token detection + ReadTimeout retry (TESTING)
+### Fix Attempt 2 — Clipped token detection + ReadTimeout retry (FAILED)
 
 Added on top of attempt 1:
 
 1. **Clipped token detection**: if `chars_per_token > 4`, the reported token count is clipped/unreliable → fall back to halving. This makes large files converge in ~4 halves instead of 30+ ratio-based resizes.
 2. **ReadTimeout retry** in `llm_client.py`: retries up to 3 times with exponential backoff on `httpx.ReadTimeout`, instead of crashing immediately.
 
-Currently running against `2018sah401_0301_0607` — result pending.
+**Result:** Clipped token detection worked correctly — convergence was fast (~4 halves from 1.37M → 132K chars). Pipeline processed ~25 successful LLM calls including several data.js chunks. However, one chunk at **132,745 chars** timed out on all 3 retry attempts (3× 300s = ~15 min wasted), then crashed:
+
+```
+05:58:00 WARNING Chunk overflow (65537 tokens for 141597 chars), resizing to 132745 chars
+05:59:22 INFO  HTTP Request: POST http://localhost:8000/v1/chat/completions "HTTP/1.1 200 OK"
+06:04:22 WARNING Read timeout (attempt 1/3)
+06:09:27 WARNING Read timeout (attempt 2/3)
+06:14:32 httpx.ReadTimeout: Read timeout after 300.0s
+```
+
+**Why it failed:** `OUTPUT_RESERVE_TOKENS = 4096` targets `max_model_len - 4096 = 61440` input tokens. After halving converges, chunks land at ~130K chars, which tokenizes to ~61K tokens — filling ~94% of the context window. At this utilization:
+- KV-cache is near-maximum, leaving little room for batching/scheduling
+- Attention computation is quadratic in sequence length
+- Some chunks complete in 30-80s, others hang >300s — vLLM behavior is unpredictable at near-full context
+
+The retry mechanism only masks the problem — retrying the same oversized chunk 3 times just wastes 15 minutes before crashing.
+
+### Suggested Fix Direction
+
+Increase `OUTPUT_RESERVE_TOKENS` from 4096 to ~16384 (25% reserve instead of 6%). This targets ~49K input tokens → ~100K chars. Chunks will be smaller but process reliably and much faster, avoiding the near-full-context pathology entirely.
 
 ### Environment
 
