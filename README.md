@@ -78,7 +78,8 @@ Code and model weights persist on `/workspace`. Only the container environment (
 ```bash
 cd /workspace/interactive_summary_extraction
 git pull
-bash pipeline/setup_runpod.sh    # ~2 min (model weights already cached)
+bash pipeline/setup_runpod.sh    # ~2 min (pipeline deps + CUDA 12.8)
+bash pipeline/setup_claude.sh    # Claude Code + SSH key restore + git config
 source ~/.bashrc
 ```
 
