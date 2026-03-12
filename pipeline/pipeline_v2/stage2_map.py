@@ -36,7 +36,8 @@ class FileSummary:
 
 
 def split_into_chunks(content: str, chunk_size: int) -> list[str]:
-    """Split content by character count at newline boundaries."""
+    """Split content by character count at newline boundaries.
+    Lines longer than chunk_size are force-split at chunk_size boundaries."""
     if len(content) <= chunk_size:
         return [content]
 
@@ -47,6 +48,19 @@ def split_into_chunks(content: str, chunk_size: int) -> list[str]:
 
     for line in lines:
         line_len = len(line) + 1  # +1 for newline
+
+        # Force-split lines longer than chunk_size (e.g. minified JS)
+        if line_len > chunk_size:
+            # Flush current chunk first
+            if current_chunk:
+                chunks.append("\n".join(current_chunk))
+                current_chunk = []
+                current_size = 0
+            # Split the long line into fixed-size pieces
+            for i in range(0, len(line), chunk_size):
+                chunks.append(line[i:i + chunk_size])
+            continue
+
         if current_size + line_len > chunk_size and current_chunk:
             chunks.append("\n".join(current_chunk))
             current_chunk = []

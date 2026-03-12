@@ -60,9 +60,16 @@ Created `pipeline/setup_claude.sh` — separate from pipeline deps:
 
 **Problem**: `_summarize_chunks` in `stage2_map.py` enters infinite recursion on large files (`data.js` in content `2018sah401_0301_0607`). The chunk size never converges — each recursion level halves once then recurses, resetting `chunk_size = len(chunk)` at the top. Logged `687424` indefinitely.
 
-**Fix**: Replaced recursive approach with iterative work queue:
-- Chunks that overflow are halved and prepended back to the queue (preserves order)
-- Added `MIN_CHUNK_SIZE = 10_000` floor — chunks below this are skipped with an error log
-- No more recursion, no more resetting `chunk_size` from `len(chunk)`
+**Fix**: Two changes:
+1. Replaced recursive `_summarize_chunks` with iterative work queue — overflowing chunks get halved and prepended back to the queue. Added `MIN_CHUNK_SIZE = 10_000` floor.
+2. Fixed `split_into_chunks` to force-split lines longer than `chunk_size` (e.g. minified JS). Previously, a single long line would pass through unsplit, causing the chunk size to never decrease.
+
+**Verified**: Pipeline successfully processed `data.js` — chunked to 65536 chars, multiple chunks got 200 OK. No infinite loop.
 
 **Details**: See `pipeline/pipeline_v2/error_log.md` for full root cause analysis.
+
+---
+
+## LLM Call Count Tracking
+
+Added `llm_calls` field to the per-content output JSON. Accumulates all LLM calls across ordering, per-file summarization, and merge stages.
