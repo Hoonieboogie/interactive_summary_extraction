@@ -9,7 +9,7 @@ echo "=== Claude Code Setup ==="
 # 1. Install Claude Code
 if ! command -v claude &> /dev/null; then
     echo "Installing Claude Code..."
-    npm install -g @anthropic-ai/claude-code
+    curl -fsSL https://claude.ai/install.sh | bash
     echo "Installed: $(claude --version)"
 else
     echo "Claude Code already installed: $(claude --version)"
