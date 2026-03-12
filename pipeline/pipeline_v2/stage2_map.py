@@ -205,6 +205,16 @@ async def summarize_file(
                     # Individual pair too large — carry forward separately for next round
                     logger.warning("Pair merge overflow, carrying summaries forward")
                     next_level.extend(group)
+            # Safety: if no progress (all pairs failed), force-concatenate to guarantee convergence
+            if len(next_level) >= len(current):
+                logger.warning("No merge progress, force-concatenating pairs")
+                forced = []
+                for j in range(0, len(next_level), 2):
+                    if j + 1 < len(next_level):
+                        forced.append(next_level[j] + "\n" + next_level[j + 1])
+                    else:
+                        forced.append(next_level[j])
+                next_level = forced
             current = next_level
         merge_resp = LLMResponse(text=current[0], prompt_tokens=0, completion_tokens=0)
 
