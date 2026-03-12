@@ -181,10 +181,32 @@ async def summarize_file(
     overflow_retries += chunk_overflows
     all_responses.extend(chunk_responses)
 
-    # Merge chunk summaries
-    merged_text = "\n\n".join(f"Chunk {i+1}:\n{s}" for i, s in enumerate(chunk_summaries))
-    merge_resp = await llm.call(CHUNK_MERGE_SYSTEM_PROMPT, merged_text)
-    all_responses.append(merge_resp)
+    # Merge chunk summaries — pairwise fallback if too many summaries overflow context
+    try:
+        merged_text = "\n\n".join(f"Chunk {i+1}:\n{s}" for i, s in enumerate(chunk_summaries))
+        merge_resp = await llm.call(CHUNK_MERGE_SYSTEM_PROMPT, merged_text)
+        all_responses.append(merge_resp)
+    except ContextOverflowError:
+        logger.warning(
+            f"Chunk merge overflow ({len(chunk_summaries)} summaries), merging pairwise"
+        )
+        # Iterative pairwise merge until all summaries fit in one call
+        current = list(chunk_summaries)
+        while len(current) > 1:
+            next_level = []
+            for i in range(0, len(current), 2):
+                group = current[i:i + 2]
+                group_text = "\n\n".join(f"Chunk:\n{s}" for s in group)
+                try:
+                    resp = await llm.call(CHUNK_MERGE_SYSTEM_PROMPT, group_text)
+                    all_responses.append(resp)
+                    next_level.append(resp.text)
+                except ContextOverflowError:
+                    # Individual pair too large — carry forward separately for next round
+                    logger.warning("Pair merge overflow, carrying summaries forward")
+                    next_level.extend(group)
+            current = next_level
+        merge_resp = LLMResponse(text=current[0], prompt_tokens=0, completion_tokens=0)
 
     result = parse_file_summary(merge_resp.text)
     result.filepath = entry.filepath

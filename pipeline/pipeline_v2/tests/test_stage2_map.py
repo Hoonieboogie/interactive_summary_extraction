@@ -72,6 +72,42 @@ class TestSummarizeFile:
         assert overflow_retries == 0
 
     @pytest.mark.asyncio
+    async def test_chunk_merge_overflow_falls_back_to_pairwise(self, mock_llm, sample_entry):
+        """If chunk summaries are too large to merge at once, merge pairwise."""
+        sample_entry.raw_content = "a" * 20_000 + "\n" + "b" * 20_000
+
+        merge_call_count = 0
+
+        async def mock_call(system_prompt, user_message):
+            nonlocal merge_call_count
+            # Whole-file attempt: overflow
+            if "분석" in system_prompt:
+                raise ContextOverflowError("overflow", actual_tokens=65537)
+            # Chunk summarization: succeed with long summaries
+            if "Summarize" in system_prompt:
+                return LLMResponse(text="chunk summary " * 100, prompt_tokens=50, completion_tokens=50)
+            # Merge calls (CHUNK_MERGE_SYSTEM_PROMPT contains "통합")
+            if "통합" in system_prompt:
+                merge_call_count += 1
+                # First merge attempt: overflow (all summaries too large together)
+                if merge_call_count == 1:
+                    raise ContextOverflowError("overflow", actual_tokens=65537)
+                # Subsequent pairwise merges succeed
+                return LLMResponse(
+                    text='{"has_educational_content": true, "summary": "final merged"}',
+                    prompt_tokens=30, completion_tokens=10,
+                )
+            # Fallback
+            return LLMResponse(
+                text='{"has_educational_content": true, "summary": "fallback"}',
+                prompt_tokens=30, completion_tokens=10,
+            )
+
+        mock_llm.call.side_effect = mock_call
+        result, responses, retries = await summarize_file(sample_entry, 5, mock_llm)
+        assert result.summary == "final merged"
+
+    @pytest.mark.asyncio
     async def test_context_overflow_triggers_chunking(self, mock_llm, sample_entry):
         # Use content large enough to produce multiple chunks after dynamic sizing
         sample_entry.raw_content = "\n".join(f"line{i:03d}" for i in range(1000))
