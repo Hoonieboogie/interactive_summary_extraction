@@ -1,0 +1,18 @@
+{
+  "filepath": "js/aspen-runscript-1.0.js",
+  "position": 6,
+  "has_educational_content": false,
+  "summary": "This JavaScript file implements a script execution engine for an interactive application, handling logic for widgets, pages, and variables. It is a technical source code file without any instructional or study-related content.",
+  "summary_full_length": 226,
+  "llm_calls": 1,
+  "overflow_retries": 0,
+  "latencies": [
+    80.67
+  ],
+  "tokens": [
+    {
+      "prompt": 13487,
+      "completion": 2587
+    }
+  ]
+}

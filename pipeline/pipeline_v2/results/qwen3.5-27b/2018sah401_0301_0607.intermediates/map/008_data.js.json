@@ -1,0 +1,98 @@
+{
+  "filepath": "data.js",
+  "position": 9,
+  "has_educational_content": true,
+  "summary": "The file constitutes a structured interactive e-learning module designed for elementary or middle school students within a Social Studies or Civic Education curriculum, specifically focusing on the unit 'Public Institutions in Our Area.' The content facilitates inquiry-based learning regarding local government functions, guiding students through research methods such as internet searches, media review, adult interviews, and organized field trips to institutions like the Gyeongsangnam-do Provinci",
+  "summary_full_length": 1735,
+  "llm_calls": 17,
+  "overflow_retries": 15,
+  "latencies": [
+    57.56,
+    57.37,
+    44.19,
+    36.4,
+    51.98,
+    47.06,
+    54.44,
+    55.28,
+    70.57,
+    60.98,
+    48.79,
+    44.96,
+    36.14,
+    38.33,
+    46.41,
+    48.23,
+    61.4
+  ],
+  "tokens": [
+    {
+      "prompt": 37824,
+      "completion": 2089
+    },
+    {
+      "prompt": 36215,
+      "completion": 2029
+    },
+    {
+      "prompt": 37767,
+      "completion": 1946
+    },
+    {
+      "prompt": 37500,
+      "completion": 1688
+    },
+    {
+      "prompt": 38314,
+      "completion": 2295
+    },
+    {
+      "prompt": 34121,
+      "completion": 2246
+    },
+    {
+      "prompt": 36768,
+      "completion": 2613
+    },
+    {
+      "prompt": 51089,
+      "completion": 2495
+    },
+    {
+      "prompt": 61054,
+      "completion": 3485
+    },
+    {
+      "prompt": 52294,
+      "completion": 3024
+    },
+    {
+      "prompt": 37525,
+      "completion": 2446
+    },
+    {
+      "prompt": 38575,
+      "completion": 2229
+    },
+    {
+      "prompt": 37978,
+      "completion": 1760
+    },
+    {
+      "prompt": 36205,
+      "completion": 1787
+    },
+    {
+      "prompt": 37470,
+      "completion": 2338
+    },
+    {
+      "prompt": 37446,
+      "completion": 2433
+    },
+    {
+      "prompt": 2682,
+      "completion": 3400
+    }
+  ]
+}

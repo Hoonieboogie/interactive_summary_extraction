@@ -1,0 +1,33 @@
+{
+  "filepath": "js/blux-apx-cvs-1.0.js",
+  "position": 4,
+  "has_educational_content": false,
+  "summary": "The provided text is a JavaScript source code file defining a user interface framework, likely BLUX or Bluega. It encompasses technical functions for application loading, device and browser detection, HTTP requests, DOM manipulation, event management, window and page handling, and touch gesture recognition. The code also defines classes for canvas rendering, object management, and UI transitions, alongside software metadata including company name, filename, and release date. There is no educatio",
+  "summary_full_length": 726,
+  "llm_calls": 4,
+  "overflow_retries": 1,
+  "latencies": [
+    64.32,
+    52.3,
+    31.36,
+    24.28
+  ],
+  "tokens": [
+    {
+      "prompt": 38298,
+      "completion": 2020
+    },
+    {
+      "prompt": 40239,
+      "completion": 1829
+    },
+    {
+      "prompt": 95,
+      "completion": 1385
+    },
+    {
+      "prompt": 268,
+      "completion": 1275
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "filepath": "corp/lib.js",
+  "position": 7,
+  "has_educational_content": true,
+  "summary": "This JavaScript file defines a library of interactive widgets and a specialized music learning execution module (sggCExeMusic) for an e-learning platform. It includes logic for handling media synchronization, subtitles, timers, and educational lesson structures such as learning objectives, song introductions, and summaries.",
+  "summary_full_length": 325,
+  "llm_calls": 1,
+  "overflow_retries": 0,
+  "latencies": [
+    53.0
+  ],
+  "tokens": [
+    {
+      "prompt": 47570,
+      "completion": 1528
+    }
+  ]
+}

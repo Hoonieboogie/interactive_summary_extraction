@@ -16,6 +16,7 @@ from stage1_ordering import order_files, order_files_fallback
 from stage2_map import summarize_file
 from stage3_reduce import merge_summaries
 from stage4_output import save_result, save_skipped_content
+import progress_log
 
 logger = logging.getLogger(__name__)
 
@@ -41,27 +42,40 @@ async def process_content(
     logger.info(f"Processing: {content_id}")
     t_total = time.monotonic()
 
+    progress_log.init(output_dir, model_name, content_id)
+
     # Stage 1: File Discovery
+    progress_log.stage("DISCOVERY_START", f"dir={content_dir}")
     entries = discover_files(content_dir)
 
     if not entries:
-        # Log to skipped_contents.json
         file_types = list({
             Path(f).suffix for f in os.listdir(content_dir)
             if os.path.isfile(content_dir / f)
         })
         save_skipped_content(output_dir, content_id, file_types)
+        progress_log.event("SKIPPED", f"no text-readable files, types={file_types}")
         logger.info(f"Skipped {content_id}: no text-readable files")
         return None
 
+    progress_log.stage("DISCOVERY_DONE", f"files={len(entries)}, types={list({Path(e.filepath).suffix for e in entries})}")
+
     # Stage 1: Ordering
+    progress_log.stage("ORDERING_START", f"files={len(entries)}")
     t_ordering = time.monotonic()
     ordered_entries, ordering_responses = await order_files(entries, llm)
     wall_ordering = round(time.monotonic() - t_ordering, 2)
     all_responses = list(ordering_responses)
     llm_calls = len(ordering_responses)
+    progress_log.stage("ORDERING_DONE", f"wall={wall_ordering}s, llm_calls={llm_calls}")
+    progress_log.save_intermediate("ordering", "file_order.json", {
+        "wall_seconds": wall_ordering,
+        "llm_calls": llm_calls,
+        "ordered_files": [{"pos": e.position, "path": e.filepath, "chars": len(e.raw_content)} for e in ordered_entries],
+    })
 
     # Stage 2: Per-File Summarization (Map) — parallel
+    progress_log.stage("MAP_START", f"files={len(ordered_entries)}, concurrency={map_concurrency}")
     t_map = time.monotonic()
     total_files = len(ordered_entries)
     file_summaries = []
@@ -79,31 +93,60 @@ async def process_content(
     )
 
     for i, result in enumerate(results):
+        filepath = ordered_entries[i].filepath
         if isinstance(result, Exception):
-            filepath = ordered_entries[i].filepath
             if isinstance(result, (httpx.HTTPError, ContextOverflowError, OSError)):
                 logger.warning(f"File {filepath} failed ({type(result).__name__}), skipping")
+                progress_log.event("MAP_FILE_FAIL", f"{filepath} error={type(result).__name__}")
             else:
                 logger.error(
                     f"Unexpected error summarizing {filepath}, skipping",
                     exc_info=(type(result), result, result.__traceback__),
                 )
+                progress_log.event("MAP_FILE_FAIL", f"{filepath} error={type(result).__name__}: {result}")
             continue
         summary, responses, overflow_retries = result
         file_summaries.append(summary)
         all_responses.extend(responses)
         llm_calls += len(responses)
         total_overflow_retries += overflow_retries
+        progress_log.event("MAP_FILE_DONE", f"{filepath} llm_calls={len(responses)}, overflows={overflow_retries}, edu={summary.has_educational_content}")
+        # Save per-file intermediate
+        safe_name = filepath.replace("/", "_").replace("\\", "_")
+        progress_log.save_intermediate("map", f"{i:03d}_{safe_name}.json", {
+            "filepath": filepath,
+            "position": summary.position,
+            "has_educational_content": summary.has_educational_content,
+            "summary": summary.summary[:500],  # truncate for readability
+            "summary_full_length": len(summary.summary),
+            "llm_calls": len(responses),
+            "overflow_retries": overflow_retries,
+            "latencies": [round(r.duration_seconds, 2) for r in responses],
+            "tokens": [{"prompt": r.prompt_tokens, "completion": r.completion_tokens} for r in responses],
+        })
     wall_map = round(time.monotonic() - t_map, 2)
 
+    progress_log.stage("MAP_DONE", f"wall={wall_map}s, files_ok={len(file_summaries)}/{len(ordered_entries)}, overflows={total_overflow_retries}")
+
     if not file_summaries:
+        progress_log.event("ABORT", "all files failed")
         logger.error(f"All files failed for {content_id}, skipping content")
         return None
 
     # Stage 3: Recursive Merge (Reduce)
+    progress_log.stage("REDUCE_START", f"summaries={len(file_summaries)}")
     t_reduce = time.monotonic()
     merge_result, merge_responses = await merge_summaries(file_summaries, llm)
     wall_reduce = round(time.monotonic() - t_reduce, 2)
+    progress_log.stage("REDUCE_DONE", f"wall={wall_reduce}s, llm_calls={len(merge_responses)}")
+    progress_log.save_intermediate("reduce", "final_merge.json", {
+        "wall_seconds": wall_reduce,
+        "llm_calls": len(merge_responses),
+        "summary": merge_result.summary,
+        "keywords": merge_result.keywords,
+        "latencies": [round(r.duration_seconds, 2) for r in merge_responses],
+        "tokens": [{"prompt": r.prompt_tokens, "completion": r.completion_tokens} for r in merge_responses],
+    })
     all_responses.extend(merge_responses)
     llm_calls += len(merge_responses)
 
@@ -130,7 +173,9 @@ async def process_content(
     }
 
     # Stage 4: Output
+    progress_log.stage("OUTPUT", f"llm_calls={llm_calls}, wall_total={wall_total}s, keywords={len(merge_result.keywords)}")
     save_result(output_dir, model_name, content_id, merge_result, llm_calls, metrics)
+    progress_log.event("PIPELINE_DONE", f"llm_calls={llm_calls}, wall={wall_total}s, overflows={total_overflow_retries}")
     logger.info(f"Done: {content_id} (LLM calls: {llm_calls}, wall: {wall_total}s)")
 
     return {

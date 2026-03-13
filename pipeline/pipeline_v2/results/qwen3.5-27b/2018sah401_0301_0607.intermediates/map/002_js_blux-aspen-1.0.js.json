@@ -1,0 +1,53 @@
+{
+  "filepath": "js/blux-aspen-1.0.js",
+  "position": 3,
+  "has_educational_content": false,
+  "summary": "The file comprises JavaScript source code for a graphical user interface and graphics editing library, focusing on technical implementation details such as loading, event management, device detection, window management, canvas rendering, and object manipulation. It includes UI controls like zooming and grid snapping, alongside software metadata and negligible content segments. Across all sections, there is no educational context, learning material, or instructional content present; the code serv",
+  "summary_full_length": 565,
+  "llm_calls": 8,
+  "overflow_retries": 3,
+  "latencies": [
+    100.8,
+    67.92,
+    13.15,
+    65.38,
+    60.24,
+    10.39,
+    25.1,
+    42.94
+  ],
+  "tokens": [
+    {
+      "prompt": 33953,
+      "completion": 3395
+    },
+    {
+      "prompt": 32974,
+      "completion": 2544
+    },
+    {
+      "prompt": 56,
+      "completion": 673
+    },
+    {
+      "prompt": 34926,
+      "completion": 2863
+    },
+    {
+      "prompt": 36225,
+      "completion": 2732
+    },
+    {
+      "prompt": 56,
+      "completion": 532
+    },
+    {
+      "prompt": 93,
+      "completion": 1148
+    },
+    {
+      "prompt": 431,
+      "completion": 2167
+    }
+  ]
+}

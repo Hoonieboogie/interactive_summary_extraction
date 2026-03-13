@@ -1,0 +1,18 @@
+{
+  "filepath": "index.html",
+  "position": 1,
+  "has_educational_content": false,
+  "summary": "This file is an HTML entry point for a web application titled 'i-Scream (with Aspen Editor)' that loads JavaScript modules and initializes an execution engine. It consists entirely of technical configuration and code without any visible educational content or study materials.",
+  "summary_full_length": 276,
+  "llm_calls": 1,
+  "overflow_retries": 0,
+  "latencies": [
+    47.31
+  ],
+  "tokens": [
+    {
+      "prompt": 1446,
+      "completion": 1450
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "filepath": "wgts/wgts.js",
+  "position": 10,
+  "has_educational_content": true,
+  "summary": "This JavaScript file defines educational widgets for an interactive learning platform, including quiz choices, answer checking containers, and keyword text features. It implements logic for handling correct/incorrect answers, subject-specific navigation, and multimedia content playback within an educational context.",
+  "summary_full_length": 317,
+  "llm_calls": 1,
+  "overflow_retries": 0,
+  "latencies": [
+    81.7
+  ],
+  "tokens": [
+    {
+      "prompt": 48303,
+      "completion": 2759
+    }
+  ]
+}

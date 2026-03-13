@@ -1,0 +1,81 @@
+{
+  "wall_seconds": 105.04,
+  "llm_calls": 1,
+  "ordered_files": [
+    {
+      "pos": 1,
+      "path": "index.html",
+      "chars": 4059
+    },
+    {
+      "pos": 2,
+      "path": "css/bxPageTransition.css",
+      "chars": 25908
+    },
+    {
+      "pos": 3,
+      "path": "js/blux-aspen-1.0.js",
+      "chars": 413198
+    },
+    {
+      "pos": 4,
+      "path": "js/blux-apx-cvs-1.0.js",
+      "chars": 233976
+    },
+    {
+      "pos": 5,
+      "path": "js/aspen-apx-1.0.js",
+      "chars": 508832
+    },
+    {
+      "pos": 6,
+      "path": "js/aspen-runscript-1.0.js",
+      "chars": 40193
+    },
+    {
+      "pos": 7,
+      "path": "corp/lib.js",
+      "chars": 128401
+    },
+    {
+      "pos": 8,
+      "path": "corp/db.js",
+      "chars": 21249
+    },
+    {
+      "pos": 9,
+      "path": "data.js",
+      "chars": 1374848
+    },
+    {
+      "pos": 10,
+      "path": "wgts/wgts.js",
+      "chars": 137945
+    },
+    {
+      "pos": 11,
+      "path": "wgts/sg.js",
+      "chars": 33307
+    },
+    {
+      "pos": 12,
+      "path": "wgts/sgg.wgt.animateCC/template/index.html",
+      "chars": 6986
+    },
+    {
+      "pos": 13,
+      "path": "wgts/sgg.wgt.animateCC/template/index.js",
+      "chars": 99393
+    },
+    {
+      "pos": 14,
+      "path": "wgts/sgg.wgt.popupContainer/wgt_170821.js",
+      "chars": 14941
+    },
+    {
+      "pos": 15,
+      "path": "asset/asset.json",
+      "chars": 36317
+    }
+  ]
+}
