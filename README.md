@@ -126,7 +126,7 @@ Use two terminals (e.g., tmux panes): one for the vLLM server, one for the pipel
 **Terminal 1 — Start vLLM server:**
 
 ```bash
-cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-27B-FP8 --max-model-len 65536 --host 0.0.0.0 --port 8000
+cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv run python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3.5-27B-FP8 --max-model-len 65536 --host 0.0.0.0 --port 8000 --reasoning-parser qwen3
 ```
 
 Wait for `Application startup complete` (~1-3 min). Keep this terminal open.
@@ -200,45 +200,40 @@ INFO  Done: <content_id>               # Content folder complete
 cd /workspace/interactive_summary_extraction/pipeline/pipeline_v2 && uv sync --dev && uv run pytest -v
 ```
 
-62 tests covering all stages, with mocked LLM calls.
+83 tests covering all stages, with mocked LLM calls.
 
 ---
 
 ## Project Structure
 
 ```
-pipeline/pipeline_v2/
-├── main.py                  # CLI entry point + orchestrator
-├── config.py                # Model configs (dataclass-based)
-├── json_parser.py           # Lenient JSON parser for LLM responses
-├── llm_client.py            # vLLM HTTP client + ContextOverflowError
-├── server.py                # vLLM server start/stop/health
-├── stage1_discovery.py      # File discovery + encoding auto-detect
-├── stage1_ordering.py       # LLM-inferred reading order
-├── stage2_map.py            # Per-file summarization + chunking
-├── stage3_reduce.py         # Recursive merge + pairwise fallback
-├── stage4_output.py         # JSON output + skipped content log
-├── pyproject.toml           # Dependencies (uv)
+├── pipeline/
+│   ├── setup_runpod.sh              # RunPod setup (pipeline deps + CUDA 12.8)
+│   ├── setup_claude.sh              # Claude Code + SSH key + git config
+│   ├── pipeline_v1/                 # Legacy pipeline (deprecated)
+│   └── pipeline_v2/                 # Current map-reduce pipeline
+│       ├── main.py                  # CLI entry point + orchestrator
+│       ├── config.py                # Model configs (--reasoning-parser qwen3)
+│       ├── json_parser.py           # Lenient JSON parser for LLM responses
+│       ├── llm_client.py            # vLLM HTTP client + ContextOverflowError
+│       ├── server.py                # vLLM server start/stop/health
+│       ├── stage1_discovery.py      # File discovery + encoding auto-detect
+│       ├── stage1_ordering.py       # LLM-inferred reading order
+│       ├── stage2_map.py            # Per-file summarization + chunking
+│       ├── stage3_reduce.py         # Recursive merge + pairwise fallback
+│       ├── stage4_output.py         # JSON output + skipped content log
+│       ├── pyproject.toml           # Dependencies (uv)
+│       ├── docs/                    # Design docs + plans
+│       ├── results/                 # Pipeline output JSONs
+│       └── tests/                   # 83 tests (mocked LLM calls)
+├── pipeline_test/
+│   └── run_test1/                   # First pipeline test run (2026-03-13)
+│       ├── pipeline_run_observations.md  # Real-time monitoring notes
+│       └── analysis.md              # Root cause analysis + action items
+├── sample_contents/                 # Sample educational content folders
 ├── docs/
-│   ├── 2026-03-11-pipeline-v2-design.md   # Design specification
-│   └── 2026-03-11-pipeline-v2-plan.md     # Implementation plan
-└── tests/                   # 62 tests
-    ├── test_json_parser.py
-    ├── test_config.py
-    ├── test_llm_client.py
-    ├── test_stage1_discovery.py
-    ├── test_stage1_ordering.py
-    ├── test_stage2_map.py
-    ├── test_stage3_reduce.py
-    ├── test_stage4_output.py
-    ├── test_main.py
-    └── test_integration.py
-
-pipeline/
-├── setup_runpod.sh          # RunPod setup script (pipeline deps + CUDA 12.8)
-└── setup_claude.sh          # Claude Code + SSH key + git config
-
-sample_contents/             # Sample educational content folders for testing
+│   └── worklogs/                    # Daily work logs
+└── CLAUDE.md                        # AI assistant instructions
 ```
 
 ---
