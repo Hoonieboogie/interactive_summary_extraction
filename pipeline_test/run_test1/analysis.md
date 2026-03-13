@@ -56,16 +56,17 @@ vLLM Prometheus metrics (request counts, token counts) were used to infer which 
 
 ## Priority Action Items
 
-1. **P0 — Fix thinking token leak**: `enable_thinking=false` or strip `<think>` blocks. Without this, every result is garbage.
-2. **P1 — Reduce overflow retries**: Better upfront content chunking or context budget estimation before sending to the LLM. Cutting retries from 22 to ~5 could halve map time.
-3. **P2 — Pre-compile flashinfer kernels**: Bake into Docker image to eliminate 7-min cold start.
-4. **P3 — Add stage-level metrics**: Tag LLM calls with stage labels so monitoring actually reflects reality.
-5. **P3 — Write intermediate results**: Crash recovery + debuggability for a 79-min pipeline.
+1. ~~**P0 — Fix thinking token leak**~~: **DONE** — `--reasoning-parser qwen3` on vLLM server cleanly separates thinking into `reasoning_content` field.
+2. ~~**P1 — Reduce overflow retries**~~: Re-analyzed — overflow retries cost ~1.6% of map time (66s/4147s). Not worth a full tokenizer approach; char-based pre-chunk threshold can be added if needed.
+3. ~~**P2 — Parallel map**~~: **DONE** — `asyncio.gather` + `asyncio.Semaphore` with `--map-concurrency` flag (default 4). Expected ~4x speedup on map phase.
+4. **P3 — Pre-compile flashinfer kernels**: Bake into Docker image to eliminate 7-min cold start.
+5. **P3 — Add stage-level metrics**: Tag LLM calls with stage labels so monitoring actually reflects reality.
+6. **P3 — Write intermediate results**: Crash recovery + debuggability.
 
 ## Production Viability Estimate
 
-At current performance (79 min/content, 1.88M tokens), processing 300K contents would take:
+At test run performance (79 min/content, 1.88M tokens), processing 300K contents would take:
 - **~395K GPU-hours** (single-threaded)
 - **~$1.5M+ in compute** at typical H100 rates
 
-Fixing the overflow retry issue alone (P1) could bring this to ~40 min/content, cutting cost roughly in half. The thinking token fix (P0) doesn't affect runtime but is required for any output to be usable.
+With parallel map (P2, ~4x speedup on the 87% map phase), estimated ~25 min/content → **~125K GPU-hours**. Further reduction requires content-level parallelism or single-pass shortcuts for small contents.

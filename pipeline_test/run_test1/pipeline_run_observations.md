@@ -138,5 +138,6 @@
 3. **Write intermediate results** — enable crash recovery and progress visibility
 4. **Batch pairwise merges** — if vLLM supports concurrent requests, merge pairs in parallel
 5. **Summarize-then-merge strategy** — instead of merging raw summaries, first compress each to fixed length before tree merge
-6. **Strip Qwen3.5 thinking tokens** — CRITICAL: parse/remove `<think>` blocks or use `enable_thinking=false` parameter before JSON extraction
-7. **Reduce overflow retries** — 22/59 calls (37%) were retries; better content chunking or context budget management could halve the map phase
+6. ~~**Strip Qwen3.5 thinking tokens**~~ — **DONE**: `--reasoning-parser qwen3` on vLLM server
+7. ~~**Reduce overflow retries**~~ — Re-analyzed: retries cost ~1.6% of map time; char-based threshold can be added if needed
+8. ~~**Parallel map**~~ — **DONE**: `asyncio.gather` + `asyncio.Semaphore` with `--map-concurrency` flag (default 4)
