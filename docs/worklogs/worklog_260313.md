@@ -42,9 +42,45 @@ Performed real-time monitoring of the pipeline run via vLLM Prometheus metrics, 
 
 ---
 
+## Optimization Strategy Discussion
+
+Reviewed all improvement options against project constraints (universal/structure-agnostic pipeline, unknown content formats, correctness first).
+
+### Decisions Made
+
+1. **Thinking token fix — keep thinking ON, strip `<think>` blocks post-hoc**
+   - Disabling thinking (`enable_thinking=false`) risks degrading output quality since Qwen3.5 uses chain-of-thought to reason through complex tasks.
+   - Better approach: let the model think, then strip `<think>...</think>` from output before JSON parsing. Quality + clean output.
+
+2. **Pre-filtering files — deferred**
+   - Heuristic-based filtering contradicts the project's core premise (structure-agnostic, universal extractor for unknown content formats).
+   - A two-pass LLM approach (cheap classification pass → expensive summarization pass) is viable but adds complexity. Defer until correctness is validated.
+
+3. **Token pre-estimation — approved**
+   - Load Qwen3.5 tokenizer at startup, count tokens before each LLM call, pre-chunk to fit within `max_context * 0.6`.
+   - Eliminates the 22 overflow retries (37% of calls) that dominated map phase runtime.
+
+4. **Parallel map — approved**
+   - Files in map phase are independent. Use `asyncio` + semaphore (concurrency ~4) with vLLM's continuous batching.
+
+5. **Single-pass shortcut for small contents — approved**
+   - If all files in a content fit in one context window, skip map-reduce entirely. One LLM call instead of dozens.
+   - Many of the 300K contents are likely small enough for this fast path.
+
+6. **Two-tier model — rejected**
+   - Risk of smaller model missing educational content in code files outweighs speed gain. Not worth the complexity now.
+
+### Rejected / Deferred
+
+- Content-level parallelism (E) — deferred until single-content output is validated
+- Two-tier model (G) — rejected for quality risk
+- Heuristic file pre-filtering (B) — contradicts universal approach
+
+---
+
 ## Next Steps (Priority Order)
 
-1. **P0**: Fix thinking token leak — `enable_thinking=false` or strip `<think>` blocks
-2. **P1**: Reduce overflow retries — better content chunking or context budget estimation
-3. **P2**: Pre-compile flashinfer kernels in Docker image
-4. **P3**: Add stage-level metrics labels to LLM calls
+1. **P0**: Strip `<think>` blocks from LLM output before JSON parsing
+2. **P1**: Add single-pass shortcut for small contents
+3. **P2**: Token pre-estimation via tokenizer to eliminate overflow retries
+4. **P3**: Parallel map calls with asyncio semaphore
