@@ -26,6 +26,14 @@ class TestParseArgs:
         args = parse_args(["--content-dir", "/data", "--skip-server"])
         assert args.skip_server is True
 
+    def test_map_concurrency_default(self):
+        args = parse_args(["--content-dir", "/data"])
+        assert args.map_concurrency == 4
+
+    def test_map_concurrency_custom(self):
+        args = parse_args(["--content-dir", "/data", "--map-concurrency", "8"])
+        assert args.map_concurrency == 8
+
 
 class TestProcessContent:
     @pytest.mark.asyncio

@@ -28,6 +28,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--content-ids", nargs="+", default=None, help="Specific content folder names")
     parser.add_argument("--num-gpus", type=int, default=1, help="Number of GPUs for tensor parallelism")
     parser.add_argument("--skip-server", action="store_true", help="Use existing vLLM server")
+    parser.add_argument("--map-concurrency", type=int, default=4, help="Max concurrent files in map phase")
     return parser.parse_args(argv)
 
 
