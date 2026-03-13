@@ -8,10 +8,13 @@ from json_parser import parse_json
 logger = logging.getLogger(__name__)
 
 ORDERING_SYSTEM_PROMPT = """You are given a list of file paths from an educational content package.
-Return them in the optimal reading order as a JSON object:
+[TASK] Return them in the optimal reading order as a JSON object:
 {"ordered_files": ["first.html", "second.html", ...]}
 
-Infer order from numbering (page_01, slide_02), naming conventions (intro, activity, quiz), and directory hierarchy."""
+- Infer order from numbering (page_01, slide_02), naming conventions (intro, activity, quiz), and directory hierarchy.
+- Strictly follow the output format.
+
+"""
 
 
 @dataclass

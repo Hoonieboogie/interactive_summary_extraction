@@ -9,21 +9,29 @@ from json_parser import parse_json
 
 logger = logging.getLogger(__name__)
 
-PERFILE_SYSTEM_PROMPT = """당신은 교육 콘텐츠 분석 전문가입니다.
-주어진 파일의 내용을 분석하고, 교육적 내용이 있는지 판단한 후 요약하세요.
+PERFILE_SYSTEM_PROMPT = """You are an expert in analyzing educational content.
+1. Analyze the context of gvien file. 
+2. Determine whether educational context exists and then summarize.
 
-반드시 다음 JSON 형식으로 응답하세요:
-{"has_educational_content": true/false, "summary": "요약 내용"}
+[IMPORTANT]
+You must strictly follow the JSON format:
+{"has_educational_content": true/false, "summary": "summary"}
 
-- has_educational_content: 교육/학습 관련 내용이 있으면 true, CSS/JS/설정 코드만 있으면 false
-- summary: 파일 내용의 핵심을 1-2문장으로 요약"""
+- has_educational_content: if there is any context related to education/study --> true. If only HTML/CSS/JS/config codes --> false
+- summary: Summarize key points(context) of the file in 1-2 sentences."""
 
-CHUNK_SYSTEM_PROMPT = """Summarize the following portion of a file. Focus on any educational content. Respond with a plain text summary."""
+CHUNK_SYSTEM_PROMPT = """Summarize the following portion of a file. 
+Main reason is to determine whether whatever educational context exists.
+Thius, focus on educational context only. 
+Respond with a plain text summary.
+"""
 
-CHUNK_MERGE_SYSTEM_PROMPT = """Combine these chunk summaries into a single coherent summary for this file. Preserve all educational content.
+CHUNK_MERGE_SYSTEM_PROMPT = """Combine these chunk summaries into a single coherent summary for this file. 
+You must preserve all educational context.
 
-반드시 다음 JSON 형식으로 응답하세요:
-{"has_educational_content": true/false, "summary": "통합 요약"}"""
+[IMPORTANT]
+You must strictly follow the JSON format:
+{"has_educational_content": true/false, "summary": "integrated summary"}"""
 
 
 @dataclass

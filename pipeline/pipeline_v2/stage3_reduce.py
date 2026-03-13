@@ -9,23 +9,28 @@ from json_parser import parse_json
 
 logger = logging.getLogger(__name__)
 
-FINAL_MERGE_SYSTEM_PROMPT = """당신은 교육 콘텐츠 요약 전문가입니다.
+FINAL_MERGE_SYSTEM_PROMPT = """당신은 교육 콘텐츠 분석/요약 전문가입니다.
 아래는 하나의 교육 콘텐츠를 구성하는 파일들의 개별 요약입니다.
 이 요약들을 종합하여 전체 콘텐츠의 최종 요약과 키워드를 생성하세요.
+요약과 키워드는 '반드시' 콘텐츠에서 콘텐츠 내용 자체에서만 알 수 있는, 교육적으로 의미적인 내용만 포함해야 합니다.
 
+
+[필수사항]
 반드시 다음 JSON 형식으로 응답하세요:
 {"summary": "정확히 3줄로 요약 (줄1. 줄2. 줄3)", "keywords": ["키워드1", "키워드2", ...]}
 
-- summary: 전체 교육 내용을 정확히 3문장으로 요약
+- summary: 콘텐츠의 전체 교육 내용을 정확히 3문장으로 요약
 - keywords: 핵심 키워드 최대 10개"""
 
 INTERMEDIATE_MERGE_SYSTEM_PROMPT = """아래 요약들을 하나의 문단 길이 요약으로 통합하고 키워드를 추출하세요.
 
+[필수사항]
 반드시 다음 JSON 형식으로 응답하세요:
 {"summary": "통합 요약 (문단 길이)", "keywords": ["키워드1", "키워드2", ...]}"""
 
 FINAL_PAIRWISE_SYSTEM_PROMPT = """아래 요약을 정확히 3줄로 압축하고, 제공된 키워드 풀에서 최적의 키워드를 최대 10개 선택하세요.
 
+[필수사항]
 반드시 다음 JSON 형식으로 응답하세요:
 {"summary": "줄1. 줄2. 줄3", "keywords": ["키워드1", "키워드2", ...]}"""
 
