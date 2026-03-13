@@ -7,5 +7,4 @@ pipeline/output/
 pipeline/.venv/
 pipeline/results/
 __pycache__/
-.CLAUDE.md
 .worktrees/
