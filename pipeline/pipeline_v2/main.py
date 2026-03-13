@@ -81,7 +81,13 @@ async def process_content(
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             filepath = ordered_entries[i].filepath
-            logger.warning(f"File {filepath} failed ({type(result).__name__}), skipping")
+            if isinstance(result, (httpx.HTTPError, ContextOverflowError, OSError)):
+                logger.warning(f"File {filepath} failed ({type(result).__name__}), skipping")
+            else:
+                logger.error(
+                    f"Unexpected error summarizing {filepath}, skipping",
+                    exc_info=(type(result), result, result.__traceback__),
+                )
             continue
         summary, responses, overflow_retries = result
         file_summaries.append(summary)
