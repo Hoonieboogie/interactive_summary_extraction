@@ -209,3 +209,26 @@ Ordering took 386s (24.5% of total wall time) — single sequential LLM call, 23
 | + heuristic ordering | ~11 min | 55,000 | $165,000 |
 
 **Most impactful single fix:** Ensuring `data.js` succeeds — changes summary from "code framework description" to actual educational content description.
+
+---
+
+## P0 Plan Crash Analysis & Fixes
+
+Performed comprehensive crash analysis on the P0 implementation plan (token budget + file status tracking) before implementing.
+
+### Critical Issues Found & Fixed
+
+1. **Module-level `from transformers import AutoTokenizer`** — would break all 83+ tests with `ImportError` on environments without `transformers`. Fixed: lazy import inside `LLMClient.__init__`, mock targets updated from `llm_client.AutoTokenizer` to `transformers.AutoTokenizer`.
+2. **`transformers>=5.0` version concern** — confirmed valid. v5.3.0 released 2026-03-04 on PyPI.
+
+### Remaining Medium Issues (noted, not blocking)
+
+- Broad `ValueError` catch hides non-empty-content bugs → should use custom `EmptyContentError`
+- `chunks` metric in `file_results` overcounts (includes merge response)
+- `run()` exception handler missing `InsufficientBudgetError` (mitigated by existing catch-all)
+
+---
+
+## Next: Run Test 3 Before P0 Implementation
+
+Will run another pipeline test first (before implementing the P0 plan) to establish a clean baseline with current code and validate the existing fixes from run test 2.

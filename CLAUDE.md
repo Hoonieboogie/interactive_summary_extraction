@@ -32,17 +32,24 @@ LLM-first universal summary extractor for 300K+ interactive educational contents
 │       ├── stage2_map.py            # Per-file summarization + chunking
 │       ├── stage3_reduce.py         # Recursive merge + pairwise fallback
 │       ├── stage4_output.py         # JSON output + skipped content log
+│       ├── error_log.md             # Runtime error tracking
 │       ├── pyproject.toml           # Dependencies (uv)
 │       ├── docs/                    # Design docs + plans
+│       │   ├── prompt-flow.md
+│       │   └── plans/              # Architecture plans
 │       ├── results/                 # Pipeline output JSONs
-│       └── tests/                   # 83 tests (mocked LLM calls)
+│       └── tests/                   # 12 test files (mocked LLM calls)
 ├── pipeline_test/
-│   └── run_test1/                   # First pipeline test run (2026-03-13)
-│       ├── pipeline_run_observations.md  # Real-time monitoring notes
-│       └── analysis.md              # Root cause analysis + action items
+│   ├── run_test1/                   # First pipeline test run
+│   │   ├── pipeline_run_observations.md
+│   │   └── analysis.md
+│   └── run_test2/                   # Second pipeline test run
+│       ├── observations.md
+│       └── analysis.md
 ├── sample_contents/                 # Sample educational content folders
 ├── docs/
-│   └── worklogs/                    # Daily work logs
+│   ├── worklogs/                    # Daily work logs
+│   └── plans/                       # Project-level design plans
 └── CLAUDE.md                        # This file
 ```
 
