@@ -131,8 +131,13 @@ class LLMClient:
             # Success
             elapsed = time.monotonic() - t0
             data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            if not content:
+                raise ValueError(
+                    "LLM returned empty content (model may have produced only thinking tokens)"
+                )
             return LLMResponse(
-                text=data["choices"][0]["message"]["content"],
+                text=content,
                 prompt_tokens=data["usage"]["prompt_tokens"],
                 completion_tokens=data["usage"]["completion_tokens"],
                 duration_seconds=round(elapsed, 2),

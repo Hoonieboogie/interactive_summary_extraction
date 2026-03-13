@@ -19,3 +19,10 @@ class TestModelConfig:
 
     def test_models_dict_not_empty(self):
         assert len(MODELS) >= 1
+
+    def test_qwen35_has_reasoning_parser(self):
+        """Qwen3.5 is a reasoning model — vLLM must separate thinking from content."""
+        cfg = get_model_config("qwen3.5-27b")
+        assert "--reasoning-parser" in cfg.vllm_args
+        parser_idx = cfg.vllm_args.index("--reasoning-parser")
+        assert cfg.vllm_args[parser_idx + 1] == "qwen3"

@@ -86,3 +86,53 @@ class TestLLMResponse:
         assert r.text == "hello"
         assert r.prompt_tokens == 10
         assert r.completion_tokens == 5
+
+
+class TestReasoningContentSeparation:
+    """With --reasoning-parser qwen3, vLLM puts thinking in reasoning_content
+    and the answer in content. The client must return only content."""
+
+    @pytest.fixture
+    def client(self):
+        return LLMClient(base_url="http://localhost:8000", model="qwen3.5-27b")
+
+    @pytest.mark.asyncio
+    async def test_returns_content_not_reasoning(self, client):
+        """When response has reasoning_content, only content is returned."""
+        mock_response = httpx.Response(
+            200,
+            json={
+                "choices": [{
+                    "message": {
+                        "content": '{"summary": "줄1. 줄2. 줄3", "keywords": ["수학"]}',
+                        "reasoning_content": "Let me think step by step...",
+                    }
+                }],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+            },
+            request=httpx.Request("POST", "http://localhost:8000/v1/chat/completions"),
+        )
+        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):
+            result = await client.call("system prompt", "user message")
+        assert result.text == '{"summary": "줄1. 줄2. 줄3", "keywords": ["수학"]}'
+        assert "think" not in result.text.lower()
+
+    @pytest.mark.asyncio
+    async def test_content_null_raises(self, client):
+        """If model produces only thinking with no content, raise a clear error."""
+        mock_response = httpx.Response(
+            200,
+            json={
+                "choices": [{
+                    "message": {
+                        "content": None,
+                        "reasoning_content": "I'm thinking but produced no answer...",
+                    }
+                }],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+            },
+            request=httpx.Request("POST", "http://localhost:8000/v1/chat/completions"),
+        )
+        with patch.object(client._http, "post", new_callable=AsyncMock, return_value=mock_response):
+            with pytest.raises(ValueError, match="empty content"):
+                await client.call("system prompt", "user message")

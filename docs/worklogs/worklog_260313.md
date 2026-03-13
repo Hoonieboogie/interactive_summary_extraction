@@ -48,9 +48,10 @@ Reviewed all improvement options against project constraints (universal/structur
 
 ### Decisions Made
 
-1. **Thinking token fix — keep thinking ON, strip `<think>` blocks post-hoc**
+1. **Thinking token fix — use `--reasoning-parser qwen3` server flag**
    - Disabling thinking (`enable_thinking=false`) risks degrading output quality since Qwen3.5 uses chain-of-thought to reason through complex tasks.
-   - Better approach: let the model think, then strip `<think>...</think>` from output before JSON parsing. Quality + clean output.
+   - Stripping `<think>` blocks post-hoc is fragile and wasteful (tokens generated then discarded).
+   - Best approach: `--reasoning-parser qwen3` on vLLM server — cleanly separates thinking into `reasoning_content` field and answer into `content` field. Zero quality risk, minimal code change.
 
 2. **Pre-filtering files — deferred**
    - Heuristic-based filtering contradicts the project's core premise (structure-agnostic, universal extractor for unknown content formats).
@@ -78,9 +79,19 @@ Reviewed all improvement options against project constraints (universal/structur
 
 ---
 
+## P0 Fix: Reasoning Parser for Thinking Token Separation (DONE)
+
+**Research**: Confirmed via official Qwen3.5 model card and vLLM docs that Qwen3.5 uses `<think>...</think>` tags. Without `--reasoning-parser`, vLLM dumps everything into `content`. With `--reasoning-parser qwen3`, thinking goes to `reasoning_content` and the answer to `content`.
+
+**Changes (TDD)**:
+- `config.py`: Added `["--reasoning-parser", "qwen3"]` to `vllm_args`
+- `llm_client.py`: Added null guard — raises `ValueError` if `content` is empty/None
+- 4 new tests, all passing. 82/83 total green (1 pre-existing failure in test_stage2_map).
+
+---
+
 ## Next Steps (Priority Order)
 
-1. **P0**: Strip `<think>` blocks from LLM output before JSON parsing
-2. **P1**: Add single-pass shortcut for small contents
-3. **P2**: Token pre-estimation via tokenizer to eliminate overflow retries
-4. **P3**: Parallel map calls with asyncio semaphore
+1. **P1**: Add single-pass shortcut for small contents
+2. **P2**: Token pre-estimation via tokenizer to eliminate overflow retries
+3. **P3**: Parallel map calls with asyncio semaphore
