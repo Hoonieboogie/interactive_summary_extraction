@@ -10,9 +10,41 @@ You are an experienced full stack engineer who led big tech companies for over 1
 
 ## Project Overview
 
-LLM-first universal summary extractor for 300K+ interactive educational contents. Runs 3 local LLMs sequentially on H100 80GB GPU via vLLM, compares Korean 3-line summaries side-by-side.
+LLM-first universal summary extractor for 300K+ interactive educational contents. Uses Qwen3.5-27B-FP8 via vLLM on H100 80GB GPU. Map-reduce pipeline produces Korean 3-line summaries + keywords.
 
-- Sample contentents are in `sample_contents/`. Note they are not randomly sampled so that they might all have coherent structure. This is why we need universal approach.
+- Sample contents are in `sample_contents/`. Note they are not randomly sampled so that they might all have coherent structure. This is why we need universal approach.
+
+## Project Structure
+
+```
+├── pipeline/
+│   ├── setup_runpod.sh              # RunPod setup (pipeline deps + CUDA 12.8)
+│   ├── setup_claude.sh              # Claude Code + SSH key + git config
+│   ├── pipeline_v1/                 # Legacy pipeline (deprecated)
+│   └── pipeline_v2/                 # Current map-reduce pipeline
+│       ├── main.py                  # CLI entry point + orchestrator
+│       ├── config.py                # Model configs (--reasoning-parser qwen3)
+│       ├── json_parser.py           # Lenient JSON parser for LLM responses
+│       ├── llm_client.py            # vLLM HTTP client + ContextOverflowError
+│       ├── server.py                # vLLM server start/stop/health
+│       ├── stage1_discovery.py      # File discovery + encoding auto-detect
+│       ├── stage1_ordering.py       # LLM-inferred reading order
+│       ├── stage2_map.py            # Per-file summarization + chunking
+│       ├── stage3_reduce.py         # Recursive merge + pairwise fallback
+│       ├── stage4_output.py         # JSON output + skipped content log
+│       ├── pyproject.toml           # Dependencies (uv)
+│       ├── docs/                    # Design docs + plans
+│       ├── results/                 # Pipeline output JSONs
+│       └── tests/                   # 83 tests (mocked LLM calls)
+├── pipeline_test/
+│   └── run_test1/                   # First pipeline test run (2026-03-13)
+│       ├── pipeline_run_observations.md  # Real-time monitoring notes
+│       └── analysis.md              # Root cause analysis + action items
+├── sample_contents/                 # Sample educational content folders
+├── docs/
+│   └── worklogs/                    # Daily work logs
+└── CLAUDE.md                        # This file
+```
 
 ## MUST REMEMBER (Never Forget!)
 
