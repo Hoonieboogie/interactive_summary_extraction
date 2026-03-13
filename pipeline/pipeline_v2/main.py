@@ -34,6 +34,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 async def process_content(
     content_dir: Path, output_dir: Path, model_name: str, llm: LLMClient,
+    map_concurrency: int = 4,
 ) -> dict | None:
     """Process a single content folder through all stages. Returns None if skipped."""
     content_id = content_dir.name
@@ -60,29 +61,33 @@ async def process_content(
     all_responses = list(ordering_responses)
     llm_calls = len(ordering_responses)
 
-    # Stage 2: Per-File Summarization (Map)
+    # Stage 2: Per-File Summarization (Map) — parallel
     t_map = time.monotonic()
     total_files = len(ordered_entries)
     file_summaries = []
     total_overflow_retries = 0
-    for entry in ordered_entries:
-        try:
-            summary, responses, overflow_retries = await summarize_file(
-                entry, total_files, llm
-            )
-            file_summaries.append(summary)
-            all_responses.extend(responses)
-            llm_calls += len(responses)
-            total_overflow_retries += overflow_retries
-        except (httpx.HTTPError, ContextOverflowError, OSError) as e:
-            logger.warning(f"File {entry.filepath} failed ({type(e).__name__}), skipping")
+
+    sem = asyncio.Semaphore(map_concurrency)
+
+    async def _summarize_one(entry):
+        async with sem:
+            return await summarize_file(entry, total_files, llm)
+
+    results = await asyncio.gather(
+        *[_summarize_one(e) for e in ordered_entries],
+        return_exceptions=True,
+    )
+
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            filepath = ordered_entries[i].filepath
+            logger.warning(f"File {filepath} failed ({type(result).__name__}), skipping")
             continue
-        except Exception:
-            logger.error(
-                f"Unexpected error summarizing {entry.filepath}, skipping",
-                exc_info=True,
-            )
-            continue
+        summary, responses, overflow_retries = result
+        file_summaries.append(summary)
+        all_responses.extend(responses)
+        llm_calls += len(responses)
+        total_overflow_retries += overflow_retries
     wall_map = round(time.monotonic() - t_map, 2)
 
     if not file_summaries:
@@ -162,7 +167,7 @@ async def run(args: argparse.Namespace) -> None:
                 logger.warning(f"Not a directory: {folder}")
                 continue
             try:
-                await process_content(folder, args.output_dir, args.model, llm)
+                await process_content(folder, args.output_dir, args.model, llm, args.map_concurrency)
             except (httpx.HTTPError, ContextOverflowError, OSError) as e:
                 logger.warning(f"Content {folder.name} failed ({type(e).__name__}), skipping")
                 continue

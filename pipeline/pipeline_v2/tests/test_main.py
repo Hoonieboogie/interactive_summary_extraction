@@ -37,6 +37,53 @@ class TestParseArgs:
 
 class TestProcessContent:
     @pytest.mark.asyncio
+    async def test_parallel_map_respects_concurrency(self):
+        """Verify that map runs with concurrency control and collects all results."""
+        import asyncio
+
+        max_concurrent = 0
+        current_concurrent = 0
+        lock = asyncio.Lock()
+
+        async def mock_call(system_prompt, user_message):
+            nonlocal max_concurrent, current_concurrent
+            async with lock:
+                current_concurrent += 1
+                max_concurrent = max(max_concurrent, current_concurrent)
+            await asyncio.sleep(0.05)
+            async with lock:
+                current_concurrent -= 1
+            return LLMResponse(
+                text='{"has_educational_content": true, "summary": "ok"}',
+                prompt_tokens=10, completion_tokens=5, duration_seconds=0.05,
+            )
+
+        mock_llm = AsyncMock()
+        mock_llm.call.side_effect = mock_call
+
+        with patch("main.discover_files") as mock_discover, \
+             patch("main.order_files") as mock_order, \
+             patch("main.merge_summaries") as mock_merge, \
+             patch("main.save_result"):
+
+            entries = [
+                MagicMock(position=i, filepath=f"f{i}.html", raw_content=f"content {i}")
+                for i in range(8)
+            ]
+            mock_discover.return_value = entries
+            mock_order.return_value = (entries, [LLMResponse(text="", prompt_tokens=0, completion_tokens=0, duration_seconds=0.1)])
+            mock_merge.return_value = (MagicMock(summary="final", keywords=["k"]), [LLMResponse(text="", prompt_tokens=0, completion_tokens=0, duration_seconds=0.1)])
+
+            result = await process_content(
+                Path("/fake/content"), Path("/fake/output"), "test-model", mock_llm,
+                map_concurrency=2,
+            )
+
+            assert result is not None
+            # 8 files with concurrency=2 → max_concurrent should be exactly 2
+            assert max_concurrent == 2
+
+    @pytest.mark.asyncio
     async def test_skips_binary_only_content(self, tmp_path):
         content_dir = tmp_path / "flash_content"
         content_dir.mkdir()
