@@ -22,7 +22,9 @@ Run test 2 revealed two P0 issues:
 
 Use `transformers.AutoTokenizer.from_pretrained(hf_id)` — the same class and model ID that vLLM uses internally. Guarantees identical tokenization including chat template via `apply_chat_template()`.
 
-Dependency: `transformers` (without `[torch]` extra). Already installed on RunPod (vLLM depends on it).
+Dependency: `transformers>=5.0` (without `[torch]` extra). Already installed on RunPod (vLLM depends on it). v5.3.0 confirmed available on PyPI as of 2026-03-04.
+
+**IMPORTANT — Lazy import**: `AutoTokenizer` must be imported lazily inside `__init__`, NOT at module level. A top-level `from transformers import AutoTokenizer` in `llm_client.py` would break every module that imports from it (`stage2_map`, `stage3_reduce`, `main`) if `transformers` is not installed — causing all 83+ tests to fail with `ImportError` on any environment without `transformers`. The lazy pattern keeps `LLMClient` importable and testable without `transformers`, and only requires the dependency when the tokenizer is actually used (i.e., when `hf_id` and `max_model_len` are provided).
 
 #### Architecture
 
@@ -31,7 +33,7 @@ config.py
 └── ModelConfig.min_generation_tokens = 4096  # floor for generation budget
 
 LLMClient (enhanced)
-├── tokenizer: AutoTokenizer       # loaded at __init__
+├── tokenizer: AutoTokenizer       # lazy-loaded at __init__ (only if hf_id+max_model_len provided)
 ├── max_model_len: int             # from ModelConfig
 ├── count_tokens(messages) -> int  # apply_chat_template(tokenize=True)
 ├── call(system, user)             # auto-calculates max_tokens before API call

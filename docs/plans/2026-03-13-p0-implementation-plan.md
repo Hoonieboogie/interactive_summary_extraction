@@ -160,7 +160,7 @@ class TestLLMClientTokenizer:
 
     @pytest.fixture
     def client_with_tokenizer(self, mock_tokenizer):
-        with patch("llm_client.AutoTokenizer") as mock_auto:
+        with patch("transformers.AutoTokenizer") as mock_auto:
             mock_auto.from_pretrained.return_value = mock_tokenizer
             client = LLMClient(
                 base_url="http://localhost:8000",
@@ -195,13 +195,13 @@ Expected: FAIL — `TypeError: LLMClient.__init__() got unexpected keyword argum
 
 **Step 3: Implement tokenizer in LLMClient**
 
-In `llm_client.py`, add import at top:
+**CRITICAL**: Do NOT add a top-level `from transformers import AutoTokenizer` import. This would break
+every module that imports from `llm_client.py` (`stage2_map`, `stage3_reduce`, `main`) if `transformers`
+is not installed — causing all 83+ tests to fail with `ImportError`. Instead, use a **lazy import**
+inside `__init__`, guarded by the `hf_id` check. This keeps `LLMClient` importable and testable
+without `transformers`, and only requires it when the tokenizer is actually used.
 
-```python
-from transformers import AutoTokenizer
-```
-
-Update `LLMClient.__init__` and add `count_tokens`:
+Update `LLMClient.__init__` and add `count_tokens` (NO top-level import):
 
 ```python
 class LLMClient:
@@ -219,8 +219,10 @@ class LLMClient:
         self._http = httpx.AsyncClient(base_url=base_url, timeout=300.0)
 
         # Load tokenizer for token counting (optional — backwards compatible)
+        # Lazy import: transformers is only required when tokenizer is actually used
         self._tokenizer = None
         if hf_id and max_model_len:
+            from transformers import AutoTokenizer
             self._tokenizer = AutoTokenizer.from_pretrained(hf_id)
 
     def count_tokens(self, system_prompt: str, user_message: str) -> int:
@@ -237,7 +239,7 @@ class LLMClient:
 **Step 4: Run tests to verify pass**
 
 Run: `cd pipeline/pipeline_v2 && python -m pytest tests/test_llm_client.py -v`
-Expected: all PASS (existing tests still work because new params are optional)
+Expected: all PASS (existing tests still work because new params are optional, and no top-level import of transformers)
 
 **Step 5: Commit**
 
@@ -269,7 +271,7 @@ class TestLLMClientMaxTokens:
 
     @pytest.fixture
     def client(self, mock_tokenizer):
-        with patch("llm_client.AutoTokenizer") as mock_auto:
+        with patch("transformers.AutoTokenizer") as mock_auto:
             mock_auto.from_pretrained.return_value = mock_tokenizer
             client = LLMClient(
                 base_url="http://localhost:8000",
